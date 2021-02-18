@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_dialog_white_corner_5_bg"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/tv_shot_down"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_tab_title"
+        android:focusableInTouchMode="true"
+        android:gravity="center"
+        android:text="关机"
+        android:textSize="24sp" />
+
+    <Button
+        android:id="@+id/tv_screen_off"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_tab_title"
+        android:focusableInTouchMode="true"
+        android:gravity="center"
+        android:text="关屏"
+        android:textSize="24sp" />
+
+    <Button
+        android:id="@+id/tv_restart"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_tab_title"
+        android:focusableInTouchMode="true"
+        android:gravity="center"
+        android:text="重启"
+        android:textSize="24sp" />
+
+
+</LinearLayout>

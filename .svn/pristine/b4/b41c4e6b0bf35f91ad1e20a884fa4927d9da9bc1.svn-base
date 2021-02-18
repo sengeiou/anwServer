@@ -1,0 +1,380 @@
+package com.inovel.setting.view.windowdialog;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.os.Handler;
+import android.os.Message;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+
+import com.inovel.setting.ANWApplication;
+import com.inovel.setting.R;
+import com.inovel.setting.bean.DialogItemBean;
+import com.inovel.setting.view.adapter.BaseAdapter;
+import com.inovel.setting.view.adapter.MenuAdapter;
+import com.inovel.setting.view.adapter.OnChildFoucsListener;
+import com.inovel.setting.view.animators.SlideInRightAnimator;
+import com.lunzn.tool.autofit.AutoImageView2;
+import com.lunzn.tool.autofit.AutoTextView;
+import com.lunzn.tool.autofit.GetScreenSize;
+import com.lunzn.tool.log.LogUtil;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * Desc: 左侧弹窗
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting
+ * ProjectName: anwServer
+ * Date: 2018/12/18 13:48
+ */
+public class LeftDialog extends NavigationWindow<DialogItemBean> {
+
+    private static final String TAG = LeftDialog.class.getSimpleName();
+
+    private static LeftDialog instance;
+
+    private static final int CANCEL_DIALOG = 0X100;
+
+
+    private RecyclerView mRecyclerView;
+
+    private AutoTextView mTvTitle;
+
+    private AutoImageView2 mIvBack;
+
+    private SlideInRightAnimator mSlideInLeftAnimator;
+
+    private GridLayoutManager mLinearLayoutManager;
+
+    //缓存的数据
+    private Stack<DialogItemBean> mCacheData = new Stack<>();
+
+    //保存上次点击的位置
+    private Stack<Integer> mCachePosition = new Stack<>();
+
+    private MenuAdapter mMenuAdapter;
+
+    protected List<DialogItemBean> mDataList = new ArrayList<>();
+
+    private int mCurrentPos;
+
+
+    @SuppressLint("HandlerLeak")
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            if (msg.what == CANCEL_DIALOG) {
+                close();
+            }
+        }
+    };
+
+
+    public LeftDialog(Context context) {
+        super(context);
+    }
+
+    public static LeftDialog newInstance() {
+        if (null == instance) {
+            synchronized (LeftDialog.class) {
+                if (null == instance) {
+                    instance = new LeftDialog(ANWApplication.getApplication());
+                }
+            }
+        }
+        return instance;
+    }
+
+    /**
+     * 获取布局参数
+     */
+    @Override
+    public WindowManager.LayoutParams getLayoutParam() {
+        mViewWidth = GetScreenSize.autofitX(440);
+        //菜单弹出框
+        LogUtil.d(TAG, "mViewWidth = " + mViewWidth);
+        WindowManager.LayoutParams wParams = new WindowManager.LayoutParams();
+        wParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager
+                .LayoutParams.FLAG_KEEP_SCREEN_ON;
+        // 设置页面无焦点 | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        wParams.type = WindowManager.LayoutParams.TYPE_APPLICATION;
+        wParams.format = PixelFormat.TRANSLUCENT;
+        wParams.gravity = Gravity.START;
+        wParams.width = mViewWidth;
+        return wParams;
+    }
+
+
+    @Override
+    public boolean isShowing() {
+        return isShow;
+    }
+
+    @Override
+    protected void createRootView(Context mContext, DialogItemBean data) {
+        mRootView = (DialogContentLayout) mInflater.inflate(R.layout.layout_dialog_base, null, false);
+        mRootView.setOrientation(LinearLayout.VERTICAL);
+        mRootView.setLayoutParams(new FrameLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT));
+        mContentView = mRootView.findViewById(R.id.fl_content_view);
+        mRecyclerView = mRootView.findViewById(R.id.recycler);
+        mTvTitle = mRootView.findViewById(R.id.tv_title);
+        mIvBack = mRootView.findViewById(R.id.iv_back);
+        mRootView.setPadding(GetScreenSize.autofitX(40), GetScreenSize.autofitX(40), 0, 0);
+        mRootView.setOnKeyEventListener(new DialogContentLayout.OnKeyEventListener() {
+
+            @Override
+            public void onKeyEvent(KeyEvent keyEvent) {
+                sendDismissHandler();
+                if (keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+                    LogUtil.i(TAG, "mRootView keyEvent:" + keyEvent.getKeyCode());
+                    switch (keyEvent.getKeyCode()) {
+                        case KeyEvent.KEYCODE_BACK:
+                            back();
+                            break;
+                        case KeyEvent.KEYCODE_DPAD_LEFT:
+                            if (mBean.isCanGoBack()) {
+                                back();
+                            }
+                            break;
+                        case KeyEvent.KEYCODE_DPAD_RIGHT:
+                            if (mBean.isHasNext()) {
+                                notifyClick(true, mCurrentPos);
+                            }
+                            break;
+                    }
+                }
+            }
+        });
+        //初始化RecyclerView
+        initRecyclerView(mContext);
+        // 处理缓存数据
+        dealCache();
+    }
+
+    /**
+     * 处理缓存数据
+     */
+    private void dealCache() {
+        mCachePosition.clear();
+        mCacheData.clear();
+
+        mCachePosition.add(0);
+        mCacheData.add(mBean);
+        next(mBean);
+    }
+
+    /**
+     * 初始化RecyclerView
+     *
+     * @param mContext 上下文
+     */
+    private void initRecyclerView(Context mContext) {
+        mRecyclerView.setFocusable(false);
+        mLinearLayoutManager = new GridLayoutManager(mContext, 1);
+        mLinearLayoutManager.setOrientation(RecyclerView.VERTICAL);
+        mRecyclerView.setLayoutManager(mLinearLayoutManager);
+
+
+        //设置item动画
+        mSlideInLeftAnimator = new SlideInRightAnimator();
+        mSlideInLeftAnimator.setAddDuration(500);
+        mSlideInLeftAnimator.setRemoveDuration(500);
+        mRecyclerView.setItemAnimator(mSlideInLeftAnimator);
+
+
+        mMenuAdapter = new MenuAdapter(mContext, mDataList);
+        mMenuAdapter.setOnItemClickListener(new BaseAdapter.OnItemClickListener<DialogItemBean>() {
+            @Override
+            public void onItemClick(DialogItemBean bean, int pos) {
+                mCurrentPos = pos;
+                notifyClick(false, pos);
+            }
+        });
+        mMenuAdapter.setOnChildSelectedListener(new OnChildFoucsListener() {
+            @Override
+            public void onChildSelected(View view) {
+                mCurrentPos = (int) view.getTag();
+
+            }
+
+            @Override
+            public void onChildLoseFocus(View view) {
+
+            }
+        });
+        mRecyclerView.setAdapter(mMenuAdapter);
+    }
+
+    /**
+     * 返回到上一个层级
+     */
+    private void back() {
+        if (null != mCacheData && !mCacheData.isEmpty()) {
+            mCacheData.pop();
+            if (mCacheData.empty()) {
+                close();
+            } else {
+                DialogItemBean dialogItemBean = mCacheData.peek();
+                mBean = dialogItemBean;
+                Integer position = mCachePosition.pop();
+                refreshView(dialogItemBean, position);
+            }
+        } else {
+            close();
+        }
+    }
+
+
+    /**
+     * 跳转界面
+     *
+     * @param dialogItemBean 界面数据
+     */
+    private void next(DialogItemBean dialogItemBean) {
+//        mTvTitle.setText(dialogItemBean.getTitle());
+//        mIvBack.setVisibility(dialogItemBean.isCanGoBack() ? View.VISIBLE : View.GONE);
+        LogUtil.i(TAG, "dialogItemBean " + dialogItemBean.toString());
+        refreshView(dialogItemBean, 0);
+    }
+
+    /**
+     * 更新界面数据
+     *
+     * @param dialogItemBean 刷新需要得数据
+     * @param position       选中的条目
+     */
+    private void refreshView(DialogItemBean dialogItemBean, Integer position) {
+        mTvTitle.setText(dialogItemBean.getTitle());
+        mIvBack.setVisibility(dialogItemBean.isCanGoBack() ? View.VISIBLE : View.GONE);
+        List<DialogItemBean> tempList = dialogItemBean.getData();
+        LogUtil.i(TAG, "dialogItemBean " + dialogItemBean.toString() + " position " + position);
+
+        mDataList.clear();
+        mMenuAdapter.notifyDataSetChanged();
+
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mDataList.addAll(tempList);
+                for (DialogItemBean itemBean : mDataList) {
+
+                    LogUtil.i(TAG, "mDataList itemBean " + itemBean.toString());
+                }
+                mMenuAdapter.notifyItemRangeInserted(mDataList.size() - tempList.size(), mDataList.size());
+            }
+        }, 500);
+
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    View view = mLinearLayoutManager.findViewByPosition(position);
+                    if (null != view) {
+                        view.requestFocusFromTouch();
+                    }
+                } catch (Exception e) {
+                    LogUtil.e(TAG, e.getMessage());
+                }
+            }
+        }, 1000);
+    }
+
+    /**
+     * 影藏侧边栏
+     */
+    private void sendDismissHandler() {
+        if (mHandler.hasMessages(CANCEL_DIALOG)) {
+            mHandler.removeMessages(CANCEL_DIALOG);
+        }
+//        mHandler.sendEmptyMessageDelayed(CANCEL_DIALOG, 3000);
+    }
+
+    /**
+     * 监听点击时间
+     *
+     * @param isRightClick 点击的是否是右键
+     * @param position     点击的位置
+     */
+    private void notifyClick(boolean isRightClick, int position) {
+        DialogItemBean dialogItemBean = mDataList.get(position);
+        if (dialogItemBean.isHasNext()) {
+            mCachePosition.add(position);
+            mCacheData.add(dialogItemBean);
+            mBean = dialogItemBean;
+            next(dialogItemBean);
+        } else {
+            if (!isRightClick) {
+                dealItemClick(position);
+            }
+        }
+    }
+
+    /**
+     * 处理点击事件
+     *
+     * @param position 点击的位置
+     */
+    private void dealItemClick(int position) {
+        //TODO 调API
+    }
+
+    /**
+     * 显示
+     */
+    @Override
+    public void show(DialogItemBean bean) {
+        super.show(bean);
+        sendDismissHandler();
+        mCacheData.clear();
+        mCacheData.add(bean);
+    }
+
+    /**
+     * @return 获取执行得动画
+     */
+    @Override
+    protected Animation getAnimation(boolean isShow) {
+        LogUtil.i(TAG, "startAnimal isShow:" + isShow);
+        float fromXDetail;
+        float toXDetail;
+        if (isShow) {
+            fromXDetail = GetScreenSize.autofitY(-440);
+            toXDetail = GetScreenSize.autofitY(0);
+        } else {
+            fromXDetail = GetScreenSize.autofitY(0);
+            toXDetail = GetScreenSize.autofitY(-440);
+        }
+        TranslateAnimation localTranslateAnimation = new TranslateAnimation(fromXDetail, toXDetail, 0f, 0f);
+        localTranslateAnimation.setDuration(500L);
+        return localTranslateAnimation;
+    }
+
+
+    /**
+     * 关闭左侧栏
+     */
+    @Override
+    protected void close() {
+        super.close();
+        mCacheData.clear();
+        if (mHandler.hasMessages(CANCEL_DIALOG)) {
+            mHandler.removeMessages(CANCEL_DIALOG);
+        }
+    }
+}

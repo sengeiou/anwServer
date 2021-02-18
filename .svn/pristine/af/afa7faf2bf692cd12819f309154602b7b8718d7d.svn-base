@@ -1,0 +1,103 @@
+package com.inovel.setting.view.windowview;
+
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.view.KeyEvent;
+import android.view.View;
+
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+import androidx.annotation.NonNull;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.windowview
+ * 工程名:Anovel
+ * 时间:2018/12/25 13:40
+ * 说明:{@link CommMenuView}辅助类
+ */
+class CommMenuViewHelper {
+
+    private static final String TAG = "CommMenuViewHelper";
+
+    /** helper对象 */
+    private View mView;
+
+    /** helper对象 */
+    private boolean isAniming;
+
+    private GlobalWindow mGlobalWindow = GlobalWindow.getInstance();
+
+    CommMenuViewHelper(View view) {
+        mView = view;
+    }
+
+    /**
+     * 分发事件处理
+     * @param event 事件
+     * @return 是否消耗掉event
+     */
+    boolean dispatchKeyEvent(@NonNull KeyEvent event) {
+        LogUtil.d(TAG, "dispatchKeyEvent " + event.toString());
+
+        //如果非显示状态
+        if (!mGlobalWindow.isShow(mView)) { return false; }
+
+        //只处理action down事件,分发子view
+        if (KeyEvent.ACTION_DOWN == event.getAction()) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_MENU:
+                case KeyEvent.KEYCODE_BACK:
+                case KeyEvent.KEYCODE_HOME:
+
+//                    showExitAnim(mView);
+                    mGlobalWindow.hide(mView);
+                    break;
+
+                default:
+                    return false;
+            }
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 退出动画
+     * @param view
+     */
+    void showExitAnim(View view){
+
+        if (isAniming) { return;}
+        LogUtil.i(TAG, "showExitAnim view"+view);
+        float curTranslationX = view.getTranslationX();
+        ObjectAnimator animator = ObjectAnimator.ofFloat(view, "translationX", curTranslationX, -500f);
+        animator.setDuration(500);
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                isAniming = false;
+                hide();
+            }
+
+            @Override
+            public void onAnimationStart(Animator animation) {
+                isAniming = true;
+            }
+        });
+        animator.start();
+    }
+
+    /**
+     * 隐藏view
+     */
+    void hide(){
+        if (mGlobalWindow.isShow(mView)) {
+            mGlobalWindow.hide(mView);
+        }
+    }
+}

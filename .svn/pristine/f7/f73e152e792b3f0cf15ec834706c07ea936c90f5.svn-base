@@ -1,0 +1,186 @@
+package com.inovel.setting.service;
+
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+import android.text.TextUtils;
+
+import com.inovel.inovelsocketlib.ClientSocket;
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.util.CMDManager;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+import org.json.JSONObject;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+/**
+ * Desc:创建监听按键的服务
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/13 17:17
+ */
+public class ANWKeyService extends Service {
+
+    private static final String TAG = ANWKeyService.class.getSimpleName();
+
+    //当前点击Power键的时间
+    private long mCurrentKeyTime;
+    private static final int CLICK_SPACE_TIME = 1000;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        connectSocket();
+    }
+
+    private void connectSocket() {
+
+        SocketManager.instance().createSocket().setConnectCallback(new ClientSocket.IConnectCallback() {
+            @Override
+            public void onConnected() {
+                LogUtil.d(TAG, "onConnected");
+
+                SocketManager.instance().createSocket().setReceiveCallback(new ClientSocket.IReceiveCallback() {
+                    @Override
+                    public void onResult(JSONObject jsonObject) {
+                        //接收socket server端发回的消息
+                        LogUtil.d(TAG, "jsonObject " + jsonObject.toString());
+                        String msg = jsonObject.optString("msg");
+
+                        if (TextUtils.equals(msg, "success")) {
+                            LogUtil.d(TAG, "==============执行命令成功================");
+
+                            CMDManager.getInstance().parseData(jsonObject);
+
+                        } else {
+                            LogUtil.d(TAG, "==========执行命令失败========================");
+                        }
+                    }
+
+                    @Override
+                    public void onError(String s) {
+                        LogUtil.i(TAG, "onError = " + s);
+                    }
+                });
+
+            }
+
+            @Override
+            public void onDisconnected() {
+                LogUtil.d(TAG, "onDisconnected");
+            }
+        }).connectServer();
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int onStartCommand = super.onStartCommand(intent, flags, startId);
+        if (intent != null) {
+            LogUtil.d(TAG, "onStartCommand intent =  " + intent.toUri(0));
+            String action = intent.getAction();
+
+            if (TextUtils.equals(action, Constants.ACTION_SELF_XIRI)) {
+                String cmd = intent.getStringExtra(Constants.KEY_DATA);
+                if (dealKeyevent(cmd)) {
+                    LogUtil.d("The event of " + cmd + " has been processed.");
+                } else {
+                    LogUtil.e("The intent with the action of the "+action+" does not have extra keyevent parameter.");
+                }
+            } else {
+                if (intent.hasExtra(Constants.KEY_EVENT)) {
+                    String event = intent.getStringExtra(Constants.KEY_EVENT);
+                    if (dealKeyevent(event)) {
+                        LogUtil.d("The event of " + event + " has been processed.");
+                    } else {
+                        LogUtil.e("The intent with the action of the com.lzpd.handle.keyevent does not have extra keyevent parameter.");
+                    }
+                }
+            }
+
+        } else {
+            LogUtil.d(TAG, "onStartCommand intent is null.");
+        }
+
+        return onStartCommand;
+    }
+
+
+    /**
+     * 处理自定义按键
+     *
+     * @param event 自定义按键
+     * @return boolean 是否已处理
+     */
+    private boolean dealKeyevent(@NonNull String event) {
+        LogUtil.d(TAG, "dealKeyevent#event = " + event);
+
+        switch (event) {
+            case Constants.KEY_POWER:
+                clickPower();
+                break;
+            case Constants.KEY_THREED:
+//                        SocketManager.instance().createSocket().setMethodId("Get3dState").send();
+                XiriCommandService.showMenu(XiriCommandService.SET3D, false);
+                break;
+            case Constants.KEY_SOURCE:
+                XiriCommandService.showMenu(XiriCommandService.SETSIGNAL, false);
+                break;
+            // TODO: 2019/1/28 没有该键？ 
+//            case Constants.KEY_MENU:
+//                XiriCommandService.showMenu(XiriCommandService.MENU, true);
+//                break;
+            case Constants.KEY_SETTINGS:
+                XiriCommandService.showMenu(XiriCommandService.MENU, true);
+                break;
+            case Constants.KEY_HOME:
+                if (GlobalWindow.getInstance().isTop()) {
+                    GlobalWindow.getInstance().hideAll();
+                }
+                break;
+            default:
+                return false;
+        }
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        SocketManager.instance().createSocket().onDestroy();
+    }
+
+
+    /**
+     * 点击电源键
+     */
+    private void clickPower() {
+        LogUtil.i(TAG, "clickPower");
+        long clickTime = System.currentTimeMillis();
+        // 判断距离上次点击小于1s
+        if (Math.abs(clickTime - mCurrentKeyTime) < CLICK_SPACE_TIME) {
+            LogUtil.i(TAG, "clickPower shotDown");
+            // 直接关机
+            PowerKeyUtils.shotDown(getApplicationContext());
+            return;
+        }
+        mCurrentKeyTime = clickTime;
+        // 判断距离上次点击大于1s，获取屏幕当前状态
+        PowerKeyUtils.newInstance().getScreenStatus();
+    }
+
+}

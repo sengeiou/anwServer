@@ -1,0 +1,192 @@
+package com.inovel.setting.service;
+
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+import android.text.TextUtils;
+import android.view.View;
+
+import com.inovel.inovelsocketlib.ClientSocket;
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.util.CMDManager;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+import org.json.JSONObject;
+
+import androidx.annotation.Nullable;
+
+/**
+ * Desc:
+ * <p> 创建监听按键的服务
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/13 17:17
+ */
+public class ANWKeyService extends Service {
+
+    private static final String TAG = ANWKeyService.class.getSimpleName();
+
+    //当前点击Power键的时间
+    private long mCurrentKeyTime;
+
+    /** 当前3D模式的状态 0是关闭3d，1是蓝光3d,2是左右模式，3是上下模式 */
+    public static int mCurState =0 ;
+
+    /** 当前的菜单类型，0代表设置，1代表信源，2代表3D */
+    public static int mCurrentType = 0;
+
+    private static final int CLICK_SPACE_TIME = 1000;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        connectSocket();
+    }
+
+    private void connectSocket() {
+
+//        //初始化图像模式设置类
+//        mTvControlManager = TvControlManager.open();
+//        LogUtil.d(TAG, "初始化 TvControlManager：" + mTvControlManager);
+
+        SocketManager.instance().createSocket().setConnectCallback(new ClientSocket.IConnectCallback() {
+            @Override
+            public void onConnected() {
+                LogUtil.d(TAG, "onConnected");
+
+                SocketManager.instance().createSocket().setReceiveCallback(new ClientSocket.IReceiveCallback() {
+                    @Override
+                    public void onResult(JSONObject jsonObject) {
+                        //接收socket server端发回的消息
+                        LogUtil.d(TAG, "jsonObject " + jsonObject.toString());
+                        String msg = jsonObject.optString("msg");
+
+                        if (TextUtils.equals(msg, "success")) {
+                            LogUtil.d(TAG, "==============执行命令成功================");
+
+                            CMDManager.getInstance().parseData(jsonObject);
+
+                        } else {
+                            LogUtil.d(TAG, "==========执行命令失败========================");
+                        }
+                    }
+
+                    @Override
+                    public void onError(String s) {
+                        LogUtil.i(TAG, "onError = " + s);
+                    }
+                });
+
+            }
+
+            @Override
+            public void onDisconnected() {
+                LogUtil.d(TAG, "onDisconnected");
+            }
+        }).connectServer();
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra(Constants.KEY_EVENT)) {
+            String event = intent.getStringExtra(Constants.KEY_EVENT);
+            LogUtil.d(TAG, "onStartCommand#event = " + event);
+            if (null != event) {
+                switch (event) {
+                    case Constants.KEY_POWER:
+                        clickPower();
+                        break;
+                    case Constants.KEY_THREED:
+                        SocketManager.instance().createSocket().setMethodId("Get3dState").send();
+                        showMenu(2, Constants.VIEW_3D);
+                        break;
+                    case Constants.KEY_SOURCE:
+                        showMenu(1, Constants.VIEW_SIGNAL);
+                        break;
+                    case Constants.KEY_SETTINGS:
+                        showMenu(0, Constants.VIEW_SET);
+                        break;
+                    case Constants.KEY_HOME:
+                        if (GlobalWindow.getInstance().isTop()) {
+                            GlobalWindow.getInstance().hideAll();
+                        }
+                        break;
+                }
+            }
+        }
+        return START_STICKY;
+    }
+
+    /**
+     * 点击3D键、设置键、信源键的操作
+     */
+    private void showMenu(int type, String tag) {
+        ANWKeyService.mCurrentType = type;
+        LogUtil.d("---ANWKeyService.mCurrentType:" + ANWKeyService.mCurrentType);
+
+        View view = GlobalWindow.getInstance().findViewByTag(tag);
+        LogUtil.d("view:" + view + " GlobalWindow.getInstance().isTop " + GlobalWindow.getInstance().isTop(view));
+
+        if (view == null) {
+
+            if (GlobalWindow.getInstance().isTop()) {
+
+                GlobalWindow.getInstance().hideAll();
+            }
+            View v = new CommMenuView(getApplicationContext());
+            v.setTag(tag);
+            GlobalWindow.getInstance()
+                    .with(getApplicationContext())
+                    .show(v, new GlobalWindow.OnWindowVisibleChangeListener() {
+                        @Override
+                        public void onShow(View v, boolean isShow) {
+                            LogUtil.d("isShow:" + isShow);
+                            if (isShow) {
+                                ((CommMenuView) v).setSelectedItem(3);
+//                                ((CommMenuView) v).sendDismissHandler();
+                            }
+                        }
+                    });
+        }
+
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        SocketManager.instance().createSocket().onDestroy();
+    }
+
+
+    /**
+     * 点击电源键
+     */
+    private void clickPower() {
+        LogUtil.i(TAG, "clickPower");
+        long clickTime = System.currentTimeMillis();
+        // 判断距离上次点击小于1s
+        if (Math.abs(clickTime - mCurrentKeyTime) < CLICK_SPACE_TIME) {
+            LogUtil.i(TAG, "clickPower shotDown");
+            // 直接关机
+            // PowerKeyUtils.shotDown(getApplicationContext());
+            return;
+        }
+        mCurrentKeyTime = clickTime;
+        // 判断距离上次点击大于1s，获取屏幕当前状态
+        PowerKeyUtils.getScreenStatus();
+    }
+
+}

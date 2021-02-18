@@ -1,0 +1,106 @@
+package com.inovel.setting.util;
+
+import android.app.Instrumentation;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.os.PowerManager;
+import android.provider.Settings;
+import android.view.KeyEvent;
+
+import com.inovel.setting.global.GlobalConstant;
+import com.inovel.setting.view.windowdialog.DialogContentLayout;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+import java.util.concurrent.Executors;
+
+
+/**
+ * Desc: 电源按键工具类
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.util
+ * ProjectName: anwServer
+ * Date: 2018/12/13 17:20
+ */
+public class PowerKeyUtils {
+
+
+    /**
+     * 关闭和点亮屏幕
+     */
+    public static void screenOffOrOn() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            Instrumentation mInst = new Instrumentation();
+            mInst.sendKeyDownUpSync(KeyEvent.KEYCODE_POWER);
+        });
+    }
+
+
+    /**
+     * 判断屏幕是否为点亮状态
+     * @return 屏幕是否为点亮状态
+     */
+    public static boolean isScreenOn(Context context) {
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return powerManager.isScreenOn();
+    }
+
+
+    /**
+     * 关机
+     */
+    public static void shotDown(Context context) {
+        Intent i = new Intent("android.intent.action.ACTION_REQUEST_SHUTDOWN");
+        i.putExtra("android.intent.extra.KEY_CONFIRM", false);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(i);
+    }
+
+    /**
+     * 重启
+     */
+    public static void reboot(Context context) {
+        Intent i = new Intent("android.intent.action.REBOOT");
+        // 立即重启：1
+        i.putExtra("nowait", 1);
+        // 重启次数：1
+        i.putExtra("interval", 1);
+        // 不出现弹窗：0
+        i.putExtra("window", 0);
+
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        context.startActivity(i);
+    }
+
+    /**
+     * 显示点击Power键页面
+     *
+     * @param context 上下文
+     */
+    public static void showPowerView(Context context) {
+        // 展示Power键布局的View
+        DialogContentLayout rootView = new DialogContentLayout(context);
+        GlobalWindow.getInstance()
+                .with(context.getApplicationContext())
+                .show(rootView, (v1, isShow) -> LogUtil.d("----------------" + isShow));
+    }
+
+
+    /**
+     * 切换信源
+     * @param id  id=6为hdmi1，id=7为hdmi2
+     */
+    public static void checkSource(Context context, int id) {
+        Settings.System.putInt(context.getContentResolver(), GlobalConstant.TV_CURRENT_DEVICE_ID, id);
+        Intent intent = new Intent();
+        intent.setComponent(ComponentName.unflattenFromString(GlobalConstant.COMPONENT_TV_APP));
+        context.startActivity(intent);
+    }
+
+
+
+
+}

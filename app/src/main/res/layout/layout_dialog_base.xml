@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.inovel.setting.view.windowdialog.DialogContentLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_key_dialog"
+    android:orientation="vertical"
+    >
+
+    <com.lunzn.tool.autofit.AutoLinearLayout
+        android:id="@+id/fl_content_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.lunzn.tool.autofit.AutoLinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="50px"
+            android:layout_marginBottom="30px"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.lunzn.tool.autofit.AutoImageView2
+                android:id="@+id/iv_back"
+                android:layout_width="24px"
+                android:layout_height="24px"
+                android:src="@drawable/ic_arrow_left"
+                android:visibility="gone" />
+
+            <com.lunzn.tool.autofit.AutoTextView
+                android:id="@+id/tv_title"
+                android:layout_width="300px"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:padding="10px"
+                android:text="标题"
+                android:textColor="@android:color/white"
+                android:textSize="34px" />
+
+        </com.lunzn.tool.autofit.AutoLinearLayout>
+
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </com.lunzn.tool.autofit.AutoLinearLayout>
+
+
+</com.inovel.setting.view.windowdialog.DialogContentLayout>

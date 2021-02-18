@@ -1,0 +1,581 @@
+package com.inovel.setting.view.windowview;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.Settings;
+import android.text.TextUtils;
+import android.util.AttributeSet;
+import android.util.SparseIntArray;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LayoutAnimationController;
+import android.widget.CheckedTextView;
+import android.widget.TextView;
+
+import com.inovel.setting.ANWApplication;
+import com.inovel.setting.R;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.service.XiriCommandService;
+import com.inovel.setting.util.AdapterFactoryImpl;
+import com.inovel.setting.util.CMDManager;
+import com.inovel.setting.util.SourceUtils;
+import com.lunzn.tool.autofit.AutoImageView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.adapter.CommonRecyclerAdapter;
+import com.lz.aiui.ai.AiHelper;
+import com.lz.aiui.ai.AiItem;
+import com.lz.aiui.interfaces.IFlatten;
+import com.lz.aiui.interfaces.OnEventTransfer;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.windowview
+ * 工程名:Anovel
+ * 时间:2018/12/25 11:23
+ * 说明: 通用View
+ */
+public class CommMenuView extends ConstraintLayout implements OnEventTransfer<Message> {
+
+    private static final String TAG = "CommMenuView";
+    /** 事件ID */
+    public static final int EVENT_NEXT = KeyEvent.KEYCODE_DPAD_RIGHT;
+    public static final int EVENT_PRE = KeyEvent.KEYCODE_DPAD_LEFT;
+    public static final int EVENT_FOCUS_CHANGED = KeyEvent.KEYCODE_CLEAR;
+    public static final int EVENT_VALUE_SET = KeyEvent.KEYCODE_DPAD_CENTER;
+    public static final int CANCEL_DIALOG = 0X100;
+    public static final int EVENT_REFRESH = 0X101;
+    public static final int EVENT_POINT = 0X200;//定位到对应菜单
+
+    /** 标题View */
+    private TextView mTitleView;
+
+    /** 返回箭头View */
+    private AutoImageView mIvBackImg;
+
+    /** 菜单项View */
+    private RecyclerView mRecyclerView;
+
+    /** 辅助类 */
+    private CommMenuViewHelper mMenuViewHelper;
+
+    /** 适配器 */
+    private CommonRecyclerAdapter mAdapter;
+
+    /** 原始数据 */
+    private AiItem mAll;
+    /** 语点命令词映射 */
+    private Map<String, AiItem> mXiriCmds;
+
+    /** 数据历史 栈队列 */
+    private ArrayList<AiItem> mRecentStack = new ArrayList<>();
+
+    /** 缓存每一页的焦点位置 */
+    private SparseIntArray mRecentPosition = new SparseIntArray();
+
+    /** 当前页(起始页为0) */
+    private int mCurrentPage;
+
+    /** 获取数据后是否刷新 */
+    private boolean mNeedFresh;
+
+    /** 刷新后的消息 */
+    private Message mMessage = new Message();
+
+    private Handler mHandler = new Handler(msg -> {
+//        LogUtil.d(TAG, "msg.what = " + msg.what);
+
+        switch (msg.what) {
+            case EVENT_NEXT:
+
+                showNext((AiItem) msg.obj);
+                break;
+            case EVENT_PRE:
+                if (mRecentStack.size() > 1) {
+                    showPre();
+                } else {
+                    LogUtil.d(TAG, "No pre page. All:  " + mAll);
+//                    mMenuViewHelper.showExitAnim(null);
+                }
+                break;
+
+            case EVENT_FOCUS_CHANGED:
+                notifyFocusChanged((int) msg.obj);
+                break;
+            case EVENT_VALUE_SET:
+                notifyDataSet();
+                break;
+            case EVENT_REFRESH:
+                mNeedFresh = true;
+                LogUtil.d(TAG, "msg.arg2 = " + msg.arg2);
+                mMessage.arg1 = msg.arg1;
+                mMessage.arg2 = msg.arg2;
+                mMessage.obj = msg.obj;
+                break;
+            case CANCEL_DIALOG:
+                mMenuViewHelper.showExitAnim(null);
+                break;
+
+
+            case EVENT_POINT:
+                String key = String.valueOf(msg.obj);
+                boolean isCanback = msg.arg1 == Constants.ABLE;
+                boolean isForcePoint = msg.arg2 == Constants.ABLE;
+                int index = indexOfCurrentPage(key);
+                LogUtil.d(key + " indexOfCurrentPage index = " + index + " isForcePoint:" + isForcePoint);
+                //是否属于当前页
+                if (index != -1 && !isForcePoint && isCanback) {
+                    //是否在当前焦点
+//                    if (isFocusCurrent(index)) {
+                        showNext(mXiriCmds.get(key));
+//                    } else {
+//                        requestRecyclerFocusItem(index);
+//
+//                    }
+                } else {
+                    pointTo(key, isCanback);
+                }
+                break;
+            default:
+                return false;
+        }
+        return true;
+    });
+
+
+    /**
+     * 是否是聚焦位置
+     *
+     * @param index 判断位置
+     * @return boolean
+     */
+    private boolean isFocusCurrent(int index) {
+        return index == mRecyclerView.indexOfChild(mRecyclerView.findFocus());
+    }
+
+
+    /**
+     * 在当前页的位置
+     *
+     * @param key item的title
+     * @return -1：未找到; 位置
+     */
+    private int indexOfCurrentPage(String key) {
+        AiItem current = mRecentStack.get(mRecentStack.size() - 1);
+        List<AiItem> subs = current.getSubs();
+        AiItem item;
+        for (int i = 0, len = subs.size(); i < len; i++) {
+            item = subs.get(i);
+            if (item == null || item.getName() == null) {
+                continue;
+            }
+            if (TextUtils.equals(key, item.getName())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+
+    /**
+     * 手动定位
+     *
+     * @param name    item名
+     * @param canBack 是否可返回
+     */
+    private void pointTo(String name, boolean canBack) {
+        //语音呼入返回上级功能
+        AiItem item = mXiriCmds.get(name);
+        LogUtil.d(TAG, " pointTo " + name);
+        if (item != null) {
+            reset();
+            if (mXiriCmds.containsKey(name)) {
+                //添加当前路径
+                mRecentStack.add(0, item);
+            }
+            if (canBack) {
+                LogUtil.i(TAG, "pushRecentStack Start.");
+                pushRecentStack(name);
+            }
+
+            if (name.equalsIgnoreCase(XiriCommandService.SETSIGNAL)) {
+                int state = -1;
+                try {
+                    state = Settings.System.getInt(ANWApplication.getApplication().getContentResolver(), Constants.TV_CURRENT_DEVICE_ID);
+                } catch (Settings.SettingNotFoundException e) {
+                    e.printStackTrace();
+                }
+                if (6 == state) {
+                    item.getSubs().get(0).setValue(AiItem.ABLE);
+                    item.getSubs().get(1).setValue(AiItem.ABLE_NO);
+                } else {
+                    item.getSubs().get(0).setValue(AiItem.ABLE_NO);
+                    item.getSubs().get(1).setValue(AiItem.ABLE);
+                }
+            } else if (name.equalsIgnoreCase(XiriCommandService.SET3D)) {
+
+                int state_3d = 0;
+                try {
+                    state_3d = Settings.System.getInt(ANWApplication.getApplication().getContentResolver(), Constants.KEY_3D_STATE);
+                } catch (Settings.SettingNotFoundException e) {
+                    e.printStackTrace();
+                }
+                for (int i = 0; i < item.getSubs().size(); i++) {
+                    item.getSubs().get(i).setValue(AiItem.ABLE_NO);
+                    if (state_3d == (3 - i)) {
+                        item.getSubs().get(i).setValue(AiItem.ABLE);
+                    }
+                }
+
+            }
+            updatePage(item);
+        }
+    }
+
+
+    public CommMenuView(Context context) {
+        this(context, null);
+    }
+
+    public CommMenuView(Context context, AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
+
+    public CommMenuView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+
+        init(context);
+    }
+
+
+    /**
+     * 重置参数
+     */
+    private void reset() {
+        mRecentStack.clear();
+        mRecentPosition.clear();
+        mCurrentPage = 0;
+    }
+
+    /**
+     * 手动定位到某个位置时，缓存上一级路径
+     *
+     * @param name item名字
+     */
+    private void pushRecentStack(String name) {
+        String upperKey = getUpperKey(name);
+        if (mXiriCmds.containsKey(upperKey)) {
+
+            //添加上一级路径
+            AiItem upper = mXiriCmds.get(upperKey);
+            if (upper != null) {
+                mRecentStack.add(0, upper);
+                mCurrentPage = mRecentStack.size() - 1;
+                if (!TextUtils.isEmpty(upper.getName())) {
+                    pushRecentStack(upper.getName());
+                }
+            } else {
+                LogUtil.w(TAG, "mXiriCmds constains error value.");
+            }
+
+        } else {
+            LogUtil.i(TAG, "pushRecentStack End.");
+        }
+
+
+    }
+
+    /**
+     * 数据发生变化，影响当前列表状态
+     */
+    private void notifyDataSet() {
+        AiItem lastPageItem = mRecentStack.get(mCurrentPage);
+        List<AiItem> list = lastPageItem.getSubs();
+        AiItem item;
+        int i = 0;
+        for (; i < list.size(); i++) {
+            item = list.get(i);
+            LogUtil.i(TAG, "item :" + item.getName());
+            if (AiItem.ABLE.equals(item.getValue())) {//寻找选中项，并设置选中状态
+                item.setValue(AiItem.ABLE_NO);
+                break;
+            }
+        }
+        int changedPosition = mRecentPosition.get(mCurrentPage);
+        list.get(changedPosition).setValue(AiItem.ABLE);
+        mAdapter.notifyItemChanged(i);
+    }
+
+    /**
+     * 焦点发生变化
+     *
+     * @param obj 焦点位置
+     */
+    private void notifyFocusChanged(int obj) {
+        LogUtil.d(TAG, " notifyFocusChanged " + obj);
+        mRecentPosition.put(mCurrentPage, obj);
+    }
+
+    /**
+     * 下一页
+     *
+     * @param obj 下一页数据
+     */
+    private void showNext(AiItem obj) {
+        mCurrentPage += 1;
+        mRecentStack.add(mRecentStack.size(), obj);
+        updatePage(obj);
+    }
+
+    private void updatePage(@NonNull AiItem obj) {
+//        LogUtil.d(TAG, "updatePage obj = " + obj);
+        mTitleView.setText(obj.getName());
+
+        if (mNeedFresh) {
+            CMDManager.getInstance().freshData(obj, mMessage);
+            mNeedFresh = false;
+        }
+
+        List<AiItem> list = mAdapter.getList();
+        list.clear();
+        list.addAll(obj.getSubs());
+        notifyDataSetChangedWithAnim();
+
+        //设置title返回箭头显示状态
+        mIvBackImg.setVisibility(hasPre() ? VISIBLE : INVISIBLE);
+    }
+
+    /**
+     * 上一页
+     */
+    private void showPre() {
+        //先清除当前页的位置缓存
+        mRecentPosition.delete(mCurrentPage);
+        //再显示上一页
+        mCurrentPage -= 1;
+        int key = mRecentStack.size() - 1;
+        mRecentStack.remove(key);
+        AiItem item = mRecentStack.get(mRecentStack.size() - 1);
+        LogUtil.d(TAG, "Pre page.   " + mRecentStack.size());
+        updatePage(item);
+    }
+
+    /**
+     * 是否可返回
+     */
+    private boolean hasPre() {
+        return mRecentStack.size() > 1;
+    }
+
+
+    /**
+     * 初始化
+     *
+     * @param context 上下文
+     */
+    private void init(Context context) {
+        LayoutInflater.from(context).inflate(R.layout.layout_comm_set, this, true);
+        mTitleView = findViewById(R.id.atv_title);
+        mIvBackImg = findViewById(R.id.iv_back_img);
+        mRecyclerView = findViewById(R.id.rv_recycler);
+
+        mMenuViewHelper = new CommMenuViewHelper(this, mHandler);
+        /* 布局管理器 */
+        GridLayoutManager linearLayoutManager = new GridLayoutManager(context, 1);
+        linearLayoutManager.setOrientation(RecyclerView.VERTICAL);
+        mRecyclerView.setLayoutManager(linearLayoutManager);
+        /* 布局动画 */
+        LayoutAnimationController controller = AnimationUtils.loadLayoutAnimation(getContext(), R.anim.anim_layout_slide_from_right);
+        mRecyclerView.setLayoutAnimation(controller);
+        mRecyclerView.setLayoutAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                LogUtil.d(TAG, "   onAnimationStart   ");
+                //设置焦点View
+                requestRecyclerFocusItem(mRecentPosition.get(mCurrentPage));
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                LogUtil.d(TAG, "   onAnimationEnd   ");
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+
+        //加载数据
+        AiHelper<AiItem> aiHelper = new AiHelper<AiItem>() {//抽象类空实现
+        };
+
+        mAll = aiHelper.flatten(SourceUtils.getFromAssets(context, "anovel.json"));
+        mTitleView.setText(mAll.getName());
+        mRecentStack.add(mRecentStack.size(), mAll);
+        //初始化语音命令词词典
+        FlattenXiriCmds xiriCmds = new FlattenXiriCmds();
+        mXiriCmds = xiriCmds.flatten(mAll);
+
+        //绑定数据
+        mAdapter = new CommonRecyclerAdapter(new AdapterFactoryImpl(context));
+        mRecyclerView.setAdapter(mAdapter);
+        mAdapter.getList().addAll(mAll.getSubs());
+        notifyDataSetChangedWithAnim();
+
+        //默认第一个位置
+        mRecentPosition.put(mCurrentPage, 0);
+    }
+
+
+    /**
+     * 请求recycler item 焦点
+     *
+     * @param position 焦点位置
+     */
+    private void requestRecyclerFocusItem(int position) {
+        RecyclerView.ViewHolder holder = mRecyclerView.findViewHolderForLayoutPosition(position);
+        LogUtil.d(TAG, "RecyclerView.ViewHolder " + holder);
+        if (holder != null) {
+            holder.itemView.requestFocus();
+            notifyFocusChanged(position);
+        }
+    }
+
+    /**
+     * 请求recycler item 焦点
+     *
+     * @param position 焦点位置
+     */
+    public void setSelectedItem(int position) {
+        RecyclerView.ViewHolder holder = mRecyclerView.findViewHolderForLayoutPosition(position);
+        LogUtil.d(TAG, "   holder   " + holder);
+        if (holder != null) {
+            ((CheckedTextView) holder.itemView.findViewById(R.id.ctv_flag)).setChecked(true);
+        }
+    }
+
+    /**
+     * 刷新数据带动画
+     */
+    private void notifyDataSetChangedWithAnim() {
+        mAdapter.notifyDataSetChanged();
+        mRecyclerView.scheduleLayoutAnimation();
+    }
+
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        LogUtil.d(TAG, "dispatchKeyEvent " + event.getAction() + ", keyCode =" + event.getKeyCode());
+
+
+        //优先处理返回键事件
+        if (KeyEvent.ACTION_DOWN == event.getAction()
+                && KeyEvent.KEYCODE_BACK == event.getKeyCode()
+                && mRecentStack.size() > 1) {
+            sendDismissHandler();
+            showPre();
+            return true;
+        } else {
+            //分发事件
+            if (mMenuViewHelper.dispatchKeyEvent(event)) {
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
+    }
+
+    @Override
+    public boolean onEvent(Message msg) {
+        if (mHandler.obtainMessage(msg.what, msg.obj) != null) {
+            Message _msg = new Message();
+            _msg.arg1 = msg.arg1;
+            _msg.arg2 = msg.arg2;
+            _msg.what = msg.what;
+            _msg.obj = msg.obj;
+            msg = _msg;
+        }
+        mHandler.sendMessage(msg);
+
+        return true;
+    }
+
+    /**
+     * 3s 隐藏侧边栏
+     */
+    public void sendDismissHandler() {
+        if (mHandler.hasMessages(CANCEL_DIALOG)) {
+            mHandler.removeMessages(CANCEL_DIALOG);
+        }
+        mHandler.sendEmptyMessageDelayed(CANCEL_DIALOG, 3000);
+    }
+
+    /**
+     * 清除当前handler下所有消息和回调
+     */
+    public void removeCallbacksAndMessages() {
+        mHandler.removeCallbacksAndMessages(null);
+    }
+
+    /**
+     * 语点命令映射关系
+     */
+    private class FlattenXiriCmds implements IFlatten<Map<String, AiItem>, AiItem> {
+
+        /*命令词解析深度, 保证唯一性，如果存在重复项，解析结果以最后一个为准*/
+        private static final int DEPTH = 2;
+
+        @Override
+        public Map<String, AiItem> flatten(AiItem target) {
+            HashMap<String, AiItem> map = new HashMap<>();
+            map.put(target.getName(), target);
+            parse(target, map, 1, DEPTH);
+            return map;
+        }
+
+        private void parse(AiItem target, HashMap<String, AiItem> map, int curDepth, final int maxDepth) {
+            List<AiItem> subs = target.getSubs();
+            if (subs != null && subs.size() > 0) {
+                String name;
+                int nextDepth = curDepth + 1;
+                for (AiItem item : subs) {
+                    name = item.getName();
+                    //将当前项加入查询字典
+                    map.put(name, item);
+                    //将当前想上一级加入查询字典
+                    map.put(getUpperKey(name), target);
+
+                    if (nextDepth <= maxDepth) {
+                        parse(item, map, nextDepth, maxDepth);
+                    }
+                }
+            }
+        }
+
+
+    }
+
+
+    /**
+     * 定义上一级存储Key
+     *
+     * @param name item项名称
+     * @return 上一级存储Key
+     */
+    public static String getUpperKey(String name) {
+        return String.valueOf(name.hashCode());
+    }
+
+}

@@ -1,0 +1,61 @@
+package com.inovel.setting.ui;
+
+import android.os.Bundle;
+import android.view.View;
+
+import com.inovel.setting.service.ANWKeyService;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+
+public class MainActivity extends BaseActivity {
+
+    private static final String TAG = MainActivity.class.getSimpleName();
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+//        startActivity(new Intent(this, MenuActivity.class));
+//        Intent intent =new Intent(this,ANWKeyService.class);
+//        intent.putExtra(ANWKeyService.KEY_EVENT,ANWKeyService.KEY_THREED);
+//        startService(intent);
+
+//        Intent intent = new Intent(this, ANWKeyService.class);
+//        intent.setPackage("com.inovel.setting");
+//        intent.putExtra(ANWKeyService.KEY_EVENT,ANWKeyService.KEY_SOURCE);
+//        startService(intent);
+        ANWKeyService.mCurrentType = 0;
+        forTest();
+        finish();
+//        Intent intent2 = new Intent();
+//        intent2.setComponent(new ComponentName("com.lzui.setting", "com.lzui.setting.MainActivity"));
+//        intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//        intent2.putExtra("methodId", "methodId");
+//        intent2.putExtra("state", "stateId");
+//        intent.setAction("action.11111111");
+//        LogUtil.i(TAG, intent2.toUri(0));
+//        //#Intent;S.methodId=methodId;S.state=stateId;end
+
+
+//        try {
+//            Intent intent1 = Intent.parseUri("#Intent;S.methodId=methodId;S.state=stateId;end", Intent.URI_ALLOW_UNSAFE);
+//            String methodId = intent1.getStringExtra("methodId");
+//            String action = intent1.getAction();
+//            LogUtil.i(TAG, "methodId = " + methodId);
+//
+//        } catch (URISyntaxException e) {
+//            e.printStackTrace();
+//        }
+    }
+
+    public void forTest() {
+        //for test
+        View v = new CommMenuView(getApplicationContext());
+        GlobalWindow.getInstance()
+                .with(getApplicationContext())
+                .show(v, (v1, isShow) -> LogUtil.d("----------------" + isShow));
+    }
+
+}

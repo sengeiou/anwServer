@@ -1,0 +1,166 @@
+package com.inovel.setting.service;
+
+import android.content.Intent;
+import android.os.Message;
+
+import com.iflytek.xiri.AppService;
+import com.iflytek.xiri.Feedback;
+import com.inovel.setting.ANWApplication;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.util.ServiceUtils;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lunzn.tool.util.CommonUtil;
+import com.lunzn.xiriparsejar.model.xiri.ResponseModel;
+import com.lunzn.xiriparsejar.parse.ParseResponseBiz;
+import com.lz.aiui.window.GlobalWindow;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Desc: 语音服务
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/14 18:29
+ */
+public class XiriCommandService extends AppService {
+
+
+    private static final String TAG = XiriCommandService.class.getSimpleName();
+    public static final String SET3D = "3D设置";
+    public static final String SETSCREEN = "画面设置";
+    public static final String SETSIGNAL = "信源设置";
+    public static final String MENU = "菜单";
+    private Feedback mFeedback;
+    private ParseResponseBiz mParseResponseBiz;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initListen();
+        mFeedback = new Feedback(XiriCommandService.this);
+        mParseResponseBiz = new ParseResponseBiz(XiriCommandService.this);
+        startServerIfNotRunning();
+    }
+
+    private void startServerIfNotRunning() {
+        boolean isRunning = ServiceUtils.isServiceRunning(getApplicationContext(), ANWKeyService.class.getName());
+        LogUtil.d("ServiceName:" + ANWKeyService.class.getName() + "           isServiceRunning:" + isRunning);
+        if (!isRunning) {
+            Intent intent = new Intent(this, ANWKeyService.class);
+            intent.setPackage("com.inovel.setting");
+            startService(intent);
+        }
+    }
+
+    @Override
+    protected void onInit() {
+
+    }
+
+    /**
+     * 初始化 语音监听
+     */
+    private void initListen() {
+        setAppListener(myAppListener);
+    }
+
+
+    /**
+     * 全局语音监听
+     */
+    IAppListener myAppListener = new IAppListener() {
+
+
+        @Override
+        public void onExecute(Intent intent) {
+            LogUtil.i(TAG, "intent " + CommonUtil.toUri(intent));
+            Map<String, String> map = new HashMap<>();
+            map.put("set3d", SET3D);
+            map.put("setscreen", SETSCREEN);
+            map.put("setsignal", SETSIGNAL);
+            String key = null;
+
+            ResponseModel responseModel = mParseResponseBiz.parseResponse(intent, intent.getStringExtra("semantic"), map);
+            if (responseModel != null) {
+                key = responseModel.getCommand();
+            }
+
+            LogUtil.i(TAG, "key " + key);
+
+            mFeedback.begin(intent);
+            if (CommonUtil.isNotEmpty(key)) {
+               if (SET3D.equalsIgnoreCase(key)) {
+                    showMenu(SET3D, false);
+                    mFeedback.feedback(key, Feedback.EXECUTION);
+
+                } else if (SETSCREEN.equalsIgnoreCase(key)) {
+                    showMenu(SETSCREEN, true);
+                    mFeedback.feedback(key, Feedback.EXECUTION);
+
+                } else if (SETSIGNAL.equalsIgnoreCase(key)) {
+                    showMenu(SETSIGNAL, false);
+                    mFeedback.feedback(key, Feedback.EXECUTION);
+
+                } else {
+                    mFeedback.feedback("不支持命令 " + key, Feedback.EXECUTION);
+                    LogUtil.w(TAG, "命令词不存在 " + key);
+                }
+            } else {
+                mFeedback.feedback("不支持命令 " + key, Feedback.EXECUTION);
+                LogUtil.w(TAG, "命令词不存在 " + key);
+            }
+
+        }
+
+        @Override
+        public void onTextFilter(Intent intent) {
+            LogUtil.d(TAG, "onTextFilter");
+        }
+    };
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        setAppListener(null);
+    }
+
+    /**
+     * 显示菜单
+     *
+     * @param cmd     菜单项名字
+     * @param canBack 是否可以返回上一级
+     */
+    public static void showMenu(String cmd, boolean canBack) {
+        CommMenuView view = GlobalWindow.getInstance().findViewByClass(CommMenuView.class);
+
+        Message message = new Message();
+        message.what = CommMenuView.EVENT_POINT;
+        message.arg1 = canBack ? Constants.ABLE : Constants.DISABLE;
+        message.arg2 = view == null ? Constants.ABLE : Constants.DISABLE;
+        message.obj = cmd;
+        LogUtil.d(TAG, "showMenu view = " + view + ", cmd = " + cmd);
+        if (view != null) {
+            GlobalWindow.getInstance().updateView(view, message);
+            view.sendDismissHandler();
+        } else {
+            //如果有电源键得界面，先退出它
+            if (GlobalWindow.getInstance().isTop()) {
+                GlobalWindow.getInstance().hideAll();
+            }
+            view = new CommMenuView(ANWApplication.getApplication());
+            view.onEvent(message);
+            GlobalWindow.getInstance()
+                    .with(ANWApplication.getApplication())
+                    .show(view, (v, isShow) -> {
+                        LogUtil.d("isShow:" + isShow);
+                        if (isShow) {
+                            ((CommMenuView) v).sendDismissHandler();
+                        }
+                    });
+        }
+    }
+}

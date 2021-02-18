@@ -1,0 +1,707 @@
+package com.inovel.setting.util;
+
+import android.content.Intent;
+import android.os.Message;
+import android.text.TextUtils;
+
+import com.droidlogic.app.tv.TvControlManager;
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.ANWApplication;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.service.ANWKeyService;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.ai.AiItem;
+import com.lz.aiui.window.GlobalWindow;
+import com.smart.data.DataFormat;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * Desc: 图像模式的设置工具类
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.util
+ * ProjectName: anwServer
+ * Date: 2018/12/20 15:14
+ */
+public class CMDManager {
+
+    private static final String TAG = CMDManager.class.getSimpleName();
+
+    /** 实例 */
+    private static CMDManager instance;
+
+    /** 图像模式的设置类 */
+    private TvControlManager mTvControlManager;
+
+    /** 当前色温模式 */
+    private int mColortemp = 0;
+
+    /** 当前图像降噪模式 */
+    private int mNoiseReductionMode = 0;
+
+    /** intent是获取意图时，具体要获取的值 */
+    public String mExplicit = new String();
+
+    /** 线程池 */
+    private ExecutorService mCachedThreadPool = Executors.newCachedThreadPool();
+
+    private JSONArray mJSONArray = new JSONArray();
+
+    private HashMap mHashMap = new HashMap();
+
+    private String[] names = {"H", "S", "V"};
+
+    private String[] colors = {"red", "green", "blue", "cyan", "yellow", "purple"};
+
+    public static CMDManager getInstance() {
+        if (instance == null) {
+            synchronized (CMDManager.class) {
+                if (instance == null) {
+                    instance = new CMDManager();
+                }
+            }
+        }
+        return instance;
+    }
+
+    private CMDManager() {
+
+        //初始化图像模式设置类
+        mTvControlManager = TvControlManager.open();
+        LogUtil.d(TAG, "初始化 TvControlManager：" + mTvControlManager);
+    }
+
+    /**
+     * 发送命令到机器
+     *
+     * @param intent
+     */
+    public void sendCMD(String intent, int value) {
+        if (!TextUtils.isEmpty(intent)) {
+            String action;
+            try {
+                Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+                action = intentCmd.getAction();
+                LogUtil.i(TAG, "sendCMD action:" + action);
+                if (!TextUtils.isEmpty(action)) {
+                    if (Constants.ACTION_CMD.equals(action)) {
+                        sendSimpleCMD(intentCmd, value);
+                    } else if (Constants.ACTION_HDMI_CMD.equals(action)) {
+                        String id = intentCmd.getStringExtra("id");
+                        LogUtil.i(TAG, "sendCMD:id:" + id);
+                        // 切换信源
+                        PowerKeyUtils.checkSource(DataFormat.getInteger(id));
+                    }
+                }
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    /**
+     * 该方法向机器发送命令
+     *
+     * @param intentCmd
+     */
+    private void sendSimpleCMD(Intent intentCmd, int value) {
+        String methodId = intentCmd.getStringExtra("methodId");
+        String param = intentCmd.getStringExtra("params");
+        String state = intentCmd.getStringExtra("state");
+        LogUtil.i("methodId:" + methodId + " param:" + param + " state:" + state + " value:" + value);
+
+        if (!TextUtils.isEmpty(param)) {
+
+            if (!TextUtils.isEmpty(state)) {
+                int temp = Integer.parseInt(state);
+                SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, temp).send();
+                if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetLightSource")) {
+                    SharedPreferenceUtil.set("LightSource", temp);
+                }
+
+            } else {
+                if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetColorCorrection")) {
+                    int index = 0;
+                    StringBuffer stringBuffer = new StringBuffer();
+                    for (int i = 0; i < colors.length; i++) {
+                        for (int j = 0; j < names.length; j++) {
+                            stringBuffer = stringBuffer.append(colors[i]).append(names[j]);
+                            if (stringBuffer.toString().equalsIgnoreCase(param) &&
+                                    mHashMap.containsKey(stringBuffer.toString())) {
+                                mHashMap.put(stringBuffer.toString(), value);
+                                try {
+                                    mJSONArray.put(index, value);
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            stringBuffer.setLength(0);
+                            index++;
+                        }
+                    }
+                    LogUtil.i("mJSONArray:" + mJSONArray.toString());
+
+                    SocketManager.instance().createSocket().setMethodId(methodId).setParameter("hsv_array", mJSONArray).send();
+                } else {
+
+                    SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, value).send();
+
+                }
+
+            }
+
+        } else {
+            mExplicit = intentCmd.getStringExtra("explicit");
+            LogUtil.i("mExplicit:" + mExplicit);
+
+
+            //重置画面设置需手动将画面设置全部设置为初始值
+            if (methodId.equalsIgnoreCase("SetImageSettingDefault")) {
+                reset();
+
+            } else {
+                SocketManager.instance().createSocket().setMethodId(methodId).send();
+            }
+        }
+
+    }
+
+    /**
+     * 重置各项数据
+     */
+    private void reset() {
+        mCachedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                for (int k = 0; k < 18; k++) {
+                    try {
+                        mJSONArray.put(k, 0);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                SocketManager.instance().createSocket().setMethodId("SetColorCorrection").setParameter("hsv_array", mJSONArray).send();
+                SocketManager.instance().createSocket().setMethodId("SetLightSource").setParameter("value", 1).send();
+                SharedPreferenceUtil.set("LightSource", 1);
+
+                setWhiteBalance("reset", 0);
+                setImageModeUserDefine("brightness", 50);
+                setImageModeUserDefine("contrast", 50);
+                setImageModeUserDefine("saturation", 50);
+                setImageModeUserDefine("resolution", 50);
+                setImageMode("imageMode", "0");
+                setImageDenoising("value", "0");
+
+//                SocketManager.instance().createSocket().setMethodId("SetProjectInstallMode").setParameter("mode", 0).send();
+//                SocketManager.instance().createSocket().setMethodId("SetCentralControl").setParameter("csValue", 0).send();
+//                SocketManager.instance().createSocket().setMethodId("SetEyeProtect").setParameter("eyeProtectValue", 1).send();
+//                SocketManager.instance().createSocket().setMethodId("SetStandbyMode").setParameter("standbyMode", 0).send();
+//                SocketManager.instance().createSocket().setMethodId("SetDLPKeystone").setParameter("keystone", 0).send();
+            }
+        });
+
+//                mTvControlManager.FactorySetParamsDefault();
+
+    }
+
+    /**
+     * 该方法向机器发送图像相关的命令
+     */
+    public void sendImageCMD(String intent, int value) {
+        try {
+            Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+            String action = intentCmd.getAction();
+            LogUtil.i(TAG, "sendImageCMD action:" + action);
+            if (null != action && Constants.ACTION_IMAGE_CMD.equalsIgnoreCase(action)) {
+                String methodId = intentCmd.getStringExtra("methodId");
+                String param = intentCmd.getStringExtra("params");
+                String state = intentCmd.getStringExtra("state");
+                LogUtil.i(TAG, " methodId:" + methodId + " param:" + param + " state:" + state);
+                if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetImageMode")) {
+                    int ret = mTvControlManager.GetPQMode(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " GetPQMode " + ret);
+                    //照片的实际值是5，但在界面上的位置是2
+                    if (ret == 5) {
+                        ret = 2;
+                    } else if (ret == 3) {
+                        ret = 4;
+                    } else if (ret == 4) {
+                        ret = 3;
+                    }
+                    sendMsg(0, ret, null);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageMode")) {
+                    setImageMode(param, state);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("getImageModeUserDefine")) {
+                    //点击自定义的同时需要设置自定义和获取自定义下的子菜单状态
+                    getImageModeUserDefine();
+
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageModeUserDefine")) {
+
+                    setImageModeUserDefine(param, value);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("getColortemp")) {
+                    int ret = mTvControlManager.GetColorTemperature(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " getColortemp " + ret);
+                    sendMsg(0, ret, null);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetColortemp")) {
+                    setColortemp(param, state);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetWhiteBalance")) {
+                    getWhiteBalance(param);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetWhiteBalance")) {
+                    setWhiteBalance(param, value);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetNoiseReductionMode")) {
+                    mNoiseReductionMode = mTvControlManager.GetNoiseReductionMode(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " GetNoiseReductionMode " + mNoiseReductionMode);
+                    sendMsg(0, mNoiseReductionMode, null);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageDenoising")) {
+                    setImageDenoising(param, state);
+
+                }
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    /**
+     * 获取亮度，对比度，色饱和度，清晰度：
+     */
+    private void getImageModeUserDefine() {
+        setColortemp("value", "0");
+        int ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_USER,
+                TvControlManager.SourceInput.TV, 1);
+        LogUtil.i(TAG, " SetPQMode " + ret);
+
+        int bright = mTvControlManager.GetBrightness(TvControlManager.SourceInput.TV);
+        int contrast = mTvControlManager.GetContrast(TvControlManager.SourceInput.TV);
+        int saturation = mTvControlManager.GetSaturation(TvControlManager.SourceInput.TV);
+        int sharpness = mTvControlManager.GetSharpness(TvControlManager.SourceInput.TV);
+
+        LogUtil.i(TAG, " bright " + bright + " contrast " + contrast + " saturation "
+                + saturation + " sharpness " + sharpness);
+        List data = new ArrayList();
+        data.add(bright);
+        data.add(contrast);
+        data.add(saturation);
+        data.add(sharpness);
+
+        sendMsg(1, -1, data);
+    }
+
+    /**
+     * 发送消息给视图层
+     * type 为0 ，代表视图全部为单选，value值为要选中的具体项，object 为空
+     * type 为1 ，代表视图全部为进度条，value为-1，object 是ArrayList，按试图层顺序依次添加
+     * type 为2 ，代表视图全部为单选且时信源设置，value值为 6 或则 7，object 为空
+     * 梯形校正是例外，虽然它是进度条，但采用第一中方式传值
+     */
+    public static void sendMsg(int type, int value, Object object) {
+        LogUtil.d(TAG, "type:" + type + " value:" + value + " Object " + object);
+        Message message = Message.obtain();
+        message.what = CommMenuView.EVENT_REFRESH;
+        message.arg1 = type;
+        message.arg2 = value;
+        message.obj = object;
+        GlobalWindow.getInstance().updateViews(message);
+    }
+
+
+    /**
+     * 设置降噪模式
+     */
+    private void setImageDenoising(String param, String state) {
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            switch (state) {
+                case "0":
+                    ret = mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_CLOSE,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    ret = mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_WEAK,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "2":
+                    ret = mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_MID,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "3":
+                    ret = mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_STRONG,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "4":
+                    ret = mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCTION_MODE_AUTO,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+            }
+            LogUtil.i(TAG, " setImageDenoising  ret " + ret);
+        }
+    }
+
+    /**
+     * 设置RGB增益和偏移
+     */
+    public void setWhiteBalance(String param, int value) {
+
+        mCachedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (!TextUtils.isEmpty(param)) {
+                    int ret = -1;
+                    float result = value + 10;
+                    switch (param) {
+                        case "rgain":
+                            result = 2047 * result / 20;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetRedGain(0, mColortemp, (int) result);
+                            break;
+                        case "roffset":
+                            result = 2047 * result / 20 - 1023;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetRedOffset(0, mColortemp, (int) result);
+                            break;
+                        case "ggain":
+                            result = 2047 * result / 20;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetGreenGain(0, mColortemp, (int) result);
+                            break;
+                        case "goffset":
+                            result = 2047 * result / 20 - 1023;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetGreenOffset(0, mColortemp, (int) result);
+                            break;
+                        case "bgain":
+                            result = 2047 * result / 20;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetBlueGain(0, mColortemp, (int) result);
+                            break;
+                        case "boffset":
+                            result = 2047 * result / 20 - 1023;
+                            ret = mTvControlManager.FactoryWhiteBalanceSetBlueOffset(0, mColortemp, (int) result);
+                            break;
+                        case "reset":
+                            ret = mTvControlManager.FactoryWhiteBalanceSetRedGain(0, 0, 1024);
+                            ret = mTvControlManager.FactoryWhiteBalanceSetGreenGain(0, 0, 1024);
+                            ret = mTvControlManager.FactoryWhiteBalanceSetBlueGain(0, 0, 1024);
+
+                            ret = mTvControlManager.FactoryWhiteBalanceSetRedOffset(0, 0, 0);
+                            ret = mTvControlManager.FactoryWhiteBalanceSetGreenOffset(0, 0, 0);
+                            ret = mTvControlManager.FactoryWhiteBalanceSetBlueOffset(0, 0, 0);
+                            break;
+
+
+                    }
+                    LogUtil.i(TAG, " setWhiteBalance  ret " + ret + " result:" + result);
+                }
+            }
+        });
+    }
+
+    /**
+     * 获取RGB增益和偏移
+     */
+    private void getWhiteBalance(String param) {
+        if (!TextUtils.isEmpty(param)) {
+            int gain = -1;
+            int offset = -1;
+            ArrayList data = new ArrayList();
+            switch (param) {
+                case "red":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetRedGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetRedOffset(0, mColortemp);
+
+                    break;
+                case "green":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetGreenGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetGreenOffset(0, mColortemp);
+                    break;
+                case "blue":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetBlueGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetBlueOffset(0, mColortemp);
+                    break;
+
+            }
+            data.add(gain);
+            data.add(offset);
+            sendMsg(1, -1, data);
+            LogUtil.i(TAG, " getWhiteBalance  gain " + gain + " offset:" + offset);
+        } else {
+            mColortemp = mTvControlManager.GetColorTemperature(TvControlManager.SourceInput.TV);
+            LogUtil.i(TAG, " mColortemp " + mColortemp);
+        }
+    }
+
+    /**
+     * 设置图像模式
+     */
+    private void setImageMode(String param, String state) {
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            // 标准 明亮 用户 需设置成标准色温
+            switch (state) {
+                case "0":
+                    setColortemp("value", "0");
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_STANDARD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    setColortemp("value", "0");
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_BRIGHT,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+
+                case "3":
+                    setColortemp("value", "0");
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_USER,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "4":
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_MOVIE,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "5":
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_COLORFUL,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+            }
+            LogUtil.i(TAG, " setImageMode  ret " + ret);
+        }
+    }
+
+    /**
+     * 设置亮度，对比度，色饱和度，清晰度：
+     */
+    private void setImageModeUserDefine(String param, int value) {
+        if (!TextUtils.isEmpty(param)) {
+            int ret = -1;
+            switch (param) {
+                case "brightness":
+                    ret = mTvControlManager.SetBrightness(value,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "contrast":
+                    ret = mTvControlManager.SetContrast(value,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "saturation":
+                    ret = mTvControlManager.SetSaturation(value,
+                            TvControlManager.SourceInput.TV, mTvControlManager.GetCurrentSignalInfo().fmt, 1);
+                    break;
+                case "resolution":
+                    ret = mTvControlManager.SetSharpness(value,
+                            TvControlManager.SourceInput.TV, 1, 0, 1);
+                    break;
+
+            }
+            LogUtil.i(TAG, " setImageModeUserDefine  ret " + ret + " value: " + value);
+        }
+    }
+
+    /**
+     * 设置色温：
+     */
+    private void setColortemp(String param, String state) {
+
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            switch (state) {
+                case "0":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_STANDARD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_WARM,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "2":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_COLD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+
+            }
+            LogUtil.i(TAG, " setColortemp  ret " + ret);
+        }
+    }
+
+    /**
+     * 解析从服务中获取到的值，解析完成后再发送刷新命令
+     */
+    public void parseData(JSONObject jsonObject) {
+        mCachedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (jsonObject.has("data")) {
+                    JSONObject data = jsonObject.optJSONObject("data");
+                    LogUtil.d(TAG, "data:" + data.toString());
+                    if (!TextUtils.isEmpty(mExplicit)) {
+                        if (mExplicit.equalsIgnoreCase("ColorCorrection")) {
+                            parseColorCorrectionData(data);
+
+
+                        } else if (mExplicit.contains("HSV")) {
+                            String[] temp = mExplicit.split("-");
+                            ArrayList list = new ArrayList();
+                            String name = temp[0] + "H";
+
+
+                            for (int i = 0; i < names.length; i++) {
+                                name = temp[0] + names[i];
+                                if (data.has(name)) {
+                                    list.add(data.opt(name));
+                                    LogUtil.d(TAG, "获取" + name + "状态成功 value:" + data.opt(name));
+                                }
+                            }
+                            sendMsg(1, -1, list);
+
+                        } else if (mExplicit.contains("state")) {
+                            int value = data.optInt(mExplicit);
+                            LogUtil.d(TAG, "获取" + mExplicit + "状态成功 value:" + value);
+                            // 0屏幕关闭，1 屏幕打开
+                            if (0 == value) {
+                                PowerKeyUtils.screenOn();
+                            } else {
+                                WorkThread.getInstance().mainThread_addWork(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        PowerKeyUtils.showPowerView(ANWApplication.getApplication());
+                                    }
+                                });
+                            }
+                        } else {
+                            if (data.has(mExplicit)) {
+
+                                int value = data.optInt(mExplicit);
+
+                                if (mExplicit.equalsIgnoreCase("LightSource")) {
+                                    value = SharedPreferenceUtil.getInt("LightSource", 0);
+                                }
+                                LogUtil.d(TAG, "获取" + mExplicit + "状态成功 value:" + value);
+                                sendMsg(0, value, null);
+                                if (mExplicit.equalsIgnoreCase("format")) {
+                                    ANWKeyService.mCurState = data.optInt("format");
+                                    LogUtil.d(TAG, "获取3d状态成功 mCurState:" + ANWKeyService.mCurState);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        });
+
+    }
+
+    /**
+     * 解析 白平衡
+     */
+    private void parseColorCorrectionData(JSONObject data) {
+        StringBuffer stringBuffer = new StringBuffer();
+        int index = 0;
+        for (int i = 0; i < colors.length; i++) {
+            for (int j = 0; j < names.length; j++) {
+                stringBuffer = stringBuffer.append(colors[i]).append(names[j]);
+                if (data.has(stringBuffer.toString())) {
+                    try {
+                        mJSONArray.put(index, data.optInt(stringBuffer.toString()));
+                        mHashMap.put(stringBuffer.toString(), data.optInt(stringBuffer.toString()));
+                        index++;
+                        LogUtil.d(TAG, "获取" + stringBuffer.toString() + "状态成功 value:" + data.opt(stringBuffer.toString()));
+                        stringBuffer.setLength(0);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 获取到消息后，刷新界面
+     */
+    public void freshData(AiItem obj, Message mMessage) {
+        mCachedThreadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+
+                try {
+                    LogUtil.i(TAG, "消息类型 " + mMessage.arg1 + " 消息值 = " + mMessage.arg2);
+                    if (mMessage.arg1 == 0) {
+                        if (!TextUtils.isEmpty(CMDManager.getInstance().mExplicit) &&
+                                CMDManager.getInstance().mExplicit.equalsIgnoreCase("keystone")) {
+
+                            obj.getSubs().get(obj.getSubs().size() - 1).setValue(String.valueOf(mMessage.arg2));
+
+                        } else if (!TextUtils.isEmpty(CMDManager.getInstance().mExplicit) &&
+                                (CMDManager.getInstance().mExplicit.equalsIgnoreCase("DynamicContrast")
+                                        || CMDManager.getInstance().mExplicit.equalsIgnoreCase("csValue")
+                                        || CMDManager.getInstance().mExplicit.equalsIgnoreCase("eyeProtectValue")
+                                        || CMDManager.getInstance().mExplicit.equalsIgnoreCase("standbyMode"))) {
+                            if (mMessage.arg2 == 1) {
+                                obj.getSubs().get(0).setValue(AiItem.ABLE);
+                                obj.getSubs().get(1).setValue(AiItem.ABLE_NO);
+                            } else {
+                                obj.getSubs().get(0).setValue(AiItem.ABLE_NO);
+                                obj.getSubs().get(1).setValue(AiItem.ABLE);
+                            }
+
+                        } else if (!TextUtils.isEmpty(CMDManager.getInstance().mExplicit) &&
+                                CMDManager.getInstance().mExplicit.equalsIgnoreCase("format")) {
+
+                            for (int i = 0; i < obj.getSubs().size(); i++) {
+                                obj.getSubs().get(i).setValue(AiItem.ABLE_NO);
+
+                                if (mMessage.arg2 == 3 - i) {
+                                    obj.getSubs().get(i).setValue(AiItem.ABLE);
+                                }
+                                LogUtil.i(TAG, "getValue = " + obj.getSubs().get(i).getValue());
+                            }
+
+                        } else {
+
+                            for (int i = 0; i < obj.getSubs().size(); i++) {
+                                obj.getSubs().get(i).setValue(AiItem.ABLE_NO);
+
+                                if (mMessage.arg2 == i) {
+                                    obj.getSubs().get(i).setValue(AiItem.ABLE);
+                                }
+                                LogUtil.i(TAG, "getValue = " + obj.getSubs().get(i).getValue());
+                            }
+                        }
+                    } else if (mMessage.arg1 == 1) {
+                        for (int i = 0; i < obj.getSubs().size(); i++) {
+                            ArrayList data = (ArrayList) mMessage.obj;
+                            obj.getSubs().get(i).setValue(String.valueOf(data.get(i)));
+                        }
+                    } else if (mMessage.arg1 == 2) {
+                        if (mMessage.arg2 == 6) {
+                            obj.getSubs().get(0).setValue(AiItem.ABLE);
+                            obj.getSubs().get(1).setValue(AiItem.ABLE_NO);
+                        } else {
+                            obj.getSubs().get(0).setValue(AiItem.ABLE_NO);
+                            obj.getSubs().get(1).setValue(AiItem.ABLE);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+}

@@ -1,0 +1,53 @@
+package com.inovel.setting;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+import androidx.annotation.StringDef;
+
+/**
+ * Desc: TODO
+ * <p>
+ * Author: zhouqiang
+ * PackageName: PACKAGE_NAME
+ * ProjectName: Anovel
+ * Date: 2019/1/2 11:24
+ */
+public class Constants {
+
+    public static final String ACTION_CMD = "cmd";
+    public static final String ACTION_HDMI_CMD = "hdmicmd";
+    public static final String ACTION_TO_ACTIVITY = "toActivity";
+    public static final String ACTION_TO_SERVICE = "toService";
+
+    /***
+     * intent 第一模板
+     * 单选
+     * #Intent;action=cmd;S.methodId=SetProjectInstallMode;S.params=mode;S.state=2;end
+     *
+     * 获取
+     * #Intent;action=cmd;S.methodId=GetFuncSettingState;end
+     *
+     * 进度条
+     * #Intent;action=cmd;S.methodId=SetDLPKeystone;S.params=keystone;end
+     *
+     * 跳转Activity
+     * #Intent;action=toActivity;component=com.lzui.setting/.MainActivity;end
+     *
+     * #Intent;action=hdmicmd;S.id=6;end
+     *
+     * #Intent;action=hdmicmd;S.id=7;end
+     *
+     * TODO 跳转服务
+     * ...
+     *
+     */
+    @StringDef({ACTION_CMD, ACTION_HDMI_CMD, ACTION_TO_ACTIVITY, ACTION_TO_SERVICE})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AnovelAction {
+        String[] ACTIONS = {ACTION_CMD, ACTION_HDMI_CMD, ACTION_TO_ACTIVITY, ACTION_TO_SERVICE};
+    }
+
+
+
+}

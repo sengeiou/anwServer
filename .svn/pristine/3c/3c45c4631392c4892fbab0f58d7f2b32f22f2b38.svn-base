@@ -1,0 +1,28 @@
+﻿{
+  "_appname": "anwservice",
+  "_appid": "",
+  "_sdk_version": "2",
+  "_pkgname": "com.inovel.setting",
+  "_commands": {
+    "关屏": [
+      "关屏",
+      "关闭屏幕"
+    ]
+    "3D设置": [
+      "3D设置",
+      "打开3D设置"
+    ]
+    "画面设置": [
+      "画面设置",
+      "打开画面设置"
+    ]
+    "信源设置": [
+      "信源设置",
+      "打开信源设置"
+    ]
+  }
+}
+
+ORp8JfkiKkxCZAu+8uANbPYzcCHkSsvVyswEn89Yoe4cApOB66Z212ygSTrY5unr9BdE5M2VzR3k
+dJdneEkPXDtaNQ/1Rw2bTeZ16dIvum7A+GdAuRjJnCidk9QJ9b77skoj8OhYi45TAUVWCwNhUEe4
+It08NJVwlVfmTtyTaBM=

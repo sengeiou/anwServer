@@ -1,0 +1,151 @@
+package com.inovel.setting.view.holder;
+
+import android.os.Handler;
+import android.provider.Settings;
+import android.text.TextUtils;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.CheckedTextView;
+import android.widget.TextView;
+
+import com.inovel.setting.ANWApplication;
+import com.inovel.setting.R;
+import com.inovel.setting.global.Constants;
+import com.inovel.setting.util.CMDManager;
+import com.inovel.setting.view.holder.helper.IViewHolderOperate;
+import com.inovel.setting.view.holder.helper.ViewHolderOperateImpl;
+import com.lunzn.tool.log.LogUtil;
+import com.lunzn.tool.toast.LzToast;
+import com.lz.aiui.adapter.IViewHolderBinder;
+import com.lz.aiui.ai.AiItem;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.holder
+ * 工程名:Anovel
+ * 时间:2018/12/25 18:22
+ * 说明:
+ */
+@SuppressWarnings("unchecked")
+public class SimpleViewHolder extends RecyclerView.ViewHolder implements IViewHolderBinder<AiItem> {
+
+    private static final String TAG = "SimpleViewHolder";
+
+    public TextView name;
+    private CheckedTextView flag;
+
+    /** ViewHolder数据操作helper */
+    private IViewHolderOperate mHelper;
+
+    public SimpleViewHolder(@NonNull View itemView) {
+        super(itemView);
+        name = itemView.findViewById(R.id.tv_menu_name);
+        flag = itemView.findViewById(R.id.ctv_flag);
+
+        mHelper = new ViewHolderOperateImpl(itemView.getContext()) {
+            @Override
+            public void reset(@NonNull RecyclerView.ViewHolder holder) {
+//                holder.itemView.setOnKeyListener(null);
+                flag.setVisibility(View.VISIBLE);
+            }
+        };
+    }
+
+
+    @Override
+    public void bind(RecyclerView.ViewHolder holder, int position, AiItem item) {
+
+        mHelper.reset(holder);
+
+        name.setText(item.getName());
+        if (item.getAttrs().isCheckable()) {
+            flag.setBackgroundResource(R.drawable.checker_ox);
+            flag.setChecked(AiItem.ABLE.equals(item.getValue()));
+        } else {
+            if (item.hasSubs() || !TextUtils.isEmpty(item.getAttrs().getIconType())) {
+                flag.setBackgroundResource(R.drawable.ic_arrow_right);
+            } else {
+                flag.setVisibility(View.INVISIBLE);
+            }
+        }
+        holder.itemView.setFocusable(true);
+        holder.itemView.setClickable(true);
+        holder.itemView.setOnClickListener(v -> LzToast.showToast(itemView.getContext(), "" + position, 2000));
+        holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+            LogUtil.d(TAG, "focusChanged " + hasFocus + ", position = " + holder.getLayoutPosition());
+            if (hasFocus) {
+                mHelper.notifyFocusChanged(holder.getLayoutPosition());
+            }
+        });
+
+        holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+            if (KeyEvent.ACTION_DOWN == event.getAction()) {
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        mHelper.showPre();
+                        break;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        if (item.getAttrs().isCheckable() && !flag.isChecked()) {
+                            flag.toggle();
+                            mHelper.notifyDataSet();
+
+                        }
+                        goNext(item);
+                        break;
+
+                    default:
+                        return false;
+                }
+                return true;
+            }
+
+            return false;
+        });
+
+        holder.itemView.setOnClickListener(v -> {
+            if (item.getAttrs().isCheckable() && !flag.isChecked()) {
+                flag.toggle();
+                mHelper.notifyDataSet();
+
+            }
+            goNext(item);
+
+
+        });
+    }
+
+    /**
+     * 跳转到下一级
+     *
+     * @param item item数据
+     */
+    private void goNext(AiItem item) {
+        String intent = item.getIntent();
+        //调用接口发送命令， 这一句必须在showNext 之前
+        LogUtil.d(TAG, "intent : " + intent);
+        boolean isSuccess = mHelper.dispatchAction(intent, -1);
+        LogUtil.d(TAG, "dispatchAction result? " + isSuccess);
+
+        if (Constants.ACTION_SOURCE_CMD.equals(intent)) {
+            try {
+                int state = Settings.System.getInt(ANWApplication.getApplication().getContentResolver(), Constants.TV_CURRENT_DEVICE_ID);
+                CMDManager.sendMsg(2, state, null);
+            } catch (Settings.SettingNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        //如果有下一级，进入下一级,延时是因为需要获取状态
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mHelper.showNext(item);
+            }
+        }, 100);
+    }
+
+
+}

@@ -1,0 +1,26 @@
+package com.inovel.setting.view.holder.helper;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.holder.helper
+ * 工程名:Anovel
+ * 时间:2018/12/28 10:37
+ * 说明:ViewHolder操作接口
+ */
+public interface IViewHolderOperate<T> {
+
+    void reset(@NonNull RecyclerView.ViewHolder holder);
+
+    void showPre();
+
+    void showNext(T item);
+
+    void notifyFocusChanged(int position);
+
+    void notifyDataSet();
+
+    boolean dispatchAction(@NonNull String intent,int value);
+}

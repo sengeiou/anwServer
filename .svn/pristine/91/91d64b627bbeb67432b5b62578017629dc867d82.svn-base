@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.lunzn.tool.autofit.AutoLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_power_key_dialog"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingLeft="20px">
+
+
+    <com.lunzn.tool.autofit.AutoButton
+        android:id="@+id/btn_restart"
+        android:layout_width="100px"
+        android:layout_height="100px"
+        android:layout_margin="75px"
+        android:background="@drawable/selector_restart" />
+
+
+    <com.lunzn.tool.autofit.AutoButton
+        android:id="@+id/btn_shot_down"
+        android:layout_width="100px"
+        android:layout_height="100px"
+        android:layout_margin="75px"
+        android:background="@drawable/selector_power_off" />
+
+    <com.lunzn.tool.autofit.AutoButton
+        android:id="@+id/btn_screen_off"
+        android:layout_width="100px"
+        android:layout_height="100px"
+        android:layout_margin="75px"
+        android:background="@drawable/selector_screen_off" />
+
+
+</com.lunzn.tool.autofit.AutoLinearLayout>

@@ -1,0 +1,43 @@
+{
+  "priority": "1",
+  "name": "信源设置",
+  "attrs": {
+    "iconType": "1",
+    "bgType": "1",
+    "checkable": "0",
+    "mulCheckable": "0",
+    "seekable": ""
+  },
+  "value": "",
+  "intent": "",
+  "subs": [
+    {
+      "priority": "1",
+      "name": "HDMI1",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "1",
+        "mulCheckable": "0",
+        "seekable": ""
+      },
+      "intent": "#Intent;S.action_inovel=hdmicmd;S.id=6;end",
+      "value": "",
+      "subs": []
+    },
+    {
+      "priority": "1",
+      "name": "HDMI2",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "1",
+        "mulCheckable": "0",
+        "seekable": ""
+      },
+      "intent": "#Intent;S.action_inovel=hdmicmd;S.id=7;end",
+      "value": "",
+      "subs": []
+    }
+  ]
+}

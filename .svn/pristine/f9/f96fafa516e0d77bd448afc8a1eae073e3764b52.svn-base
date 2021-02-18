@@ -1,0 +1,94 @@
+package com.inovel.setting.ui;
+
+import android.os.Build;
+import android.os.Bundle;
+
+import com.inovel.setting.R;
+import com.inovel.setting.util.AppManager;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+/**
+ * 作者:      周来
+ * 包名:      com.inovel.setting
+ * 工程名:     anwServer
+ * 时间:      2018/9/20
+ * 说明:      所有Activity基类
+ */
+public class BaseActivity extends AppCompatActivity {
+
+    //当前存在焦点的view
+//    public View currentFocusView = null;
+
+//    public OnChildFoucsListener childSelectedListener = new OnChildFoucsListener() {
+//        @Override
+//        public void onChildSelected(View view) {
+//            if (view != null) {
+//                view.findViewById(R.id.item_focuse_border).setVisibility(View.VISIBLE);
+//                currentFocusView = view;
+//            }
+//        }
+//
+//        @Override
+//        public void onChildLoseFocus(View loseFocusView) {
+//            if (loseFocusView != null) {
+//                loseFocusView.findViewById(R.id.item_focuse_border).setVisibility(View.INVISIBLE);
+//            }
+//        }
+//    };
+//    private ProgressDialog pDialog;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        AppManager.getInstance().addActivity(this);
+    }
+
+
+
+    @Override
+    public void finish() {
+        super.finish();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
+        }
+    }
+
+//    protected void showProgressDialog(boolean cancelable) {
+//        try {
+//            if (pDialog == null) {
+//                pDialog = new ProgressDialog(this, R.style.custom_Progress);
+//                pDialog.setCancelable(cancelable);
+//                pDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+//                    @Override
+//                    public void onCancel(DialogInterface dialog) {
+//                        finish();
+//                    }
+//                });
+//            }
+//            pDialog.show();
+//            pDialog.setContentView(R.layout.dlg_progress);
+//        } catch (Exception ex) {
+//            ex.printStackTrace();
+//        }
+//    }
+//
+//    protected void showProgressDialog() {
+//        showProgressDialog(false);
+//    }
+
+
+//    protected void dismissProgress() {
+//        if (pDialog != null && pDialog.isShowing())
+//            pDialog.dismiss();
+//    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+//        dismissProgress();
+        AppManager.getInstance().removeActivity(this);
+    }
+}

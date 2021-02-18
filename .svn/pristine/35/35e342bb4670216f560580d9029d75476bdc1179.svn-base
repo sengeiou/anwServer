@@ -1,0 +1,135 @@
+package com.inovel.setting.service;
+
+import android.content.Intent;
+
+import com.iflytek.xiri.AppService;
+import com.iflytek.xiri.Feedback;
+import com.lunzn.tool.log.LogUtil;
+import com.lunzn.tool.util.CommonUtil;
+import com.lunzn.xiriparsejar.model.xiri.ResponseModel;
+import com.lunzn.xiriparsejar.parse.ParseResponseBiz;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Desc: TODO
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/14 18:29
+ */
+public class XiriCommandService extends AppService {
+
+
+    private static final String TAG = XiriCommandService.class.getSimpleName();
+
+    public static final String COLSESCREEN = "关屏";
+    public static final String SET3D = "3D设置";
+    public static final String SETSCREEN = "画面设置";
+    public static final String SETSIGNAL = "信源设置";
+
+    private Feedback mFeedback;
+
+    private ParseResponseBiz mParseResponseBiz;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initListen();
+        mFeedback = new Feedback(XiriCommandService.this);
+        mParseResponseBiz = new ParseResponseBiz(XiriCommandService.this);
+    }
+
+    @Override
+    protected void onInit() {
+
+    }
+
+    /**
+     * 初始化 语音监听
+     */
+    private void initListen() {
+        //应用内全局
+//        setLocalAppListener(localAppListener);
+        // 应用
+        setAppListener(myAppListener);
+    }
+
+    /**
+     * 应用内全局语音监听
+     */
+    ILocalAppListener localAppListener = new ILocalAppListener() {
+
+        @Override
+        public void onExecute(Intent arg0) {
+            LogUtil.i(TAG, "localAppListener onExecute() ");
+            mFeedback.begin(arg0);
+            String key = arg0.getStringExtra("_command");
+            if ("左右3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已打开左右3D", Feedback.SILENCE);
+            } else if ("上下3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已打开上下3D", Feedback.SILENCE);
+            } else if ("关闭3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已关闭3D", Feedback.SILENCE);
+            }
+        }
+    };
+
+
+    /**
+     * 全局语音监听
+     */
+    IAppListener myAppListener = new IAppListener() {
+
+
+        @Override
+        public void onExecute(Intent intent) {
+            LogUtil.i(TAG, "intent " + CommonUtil.toUri(intent));
+            Map<String, String> map = new HashMap<>();
+            map.put("colsescreen", COLSESCREEN);
+            map.put("set3d", SET3D);
+            map.put("setscreen", SETSCREEN);
+            map.put("setsignal", SETSIGNAL);
+            String key = null;
+
+            ResponseModel responseModel = mParseResponseBiz.parseResponse(intent, intent.getStringExtra("semantic"), map);
+            if (responseModel != null) {
+                key = responseModel.getCommand();
+            }
+
+            LogUtil.i(TAG, "key " + key);
+
+            mFeedback.begin(intent);
+            if (CommonUtil.isNotEmpty(key) && COLSESCREEN.equalsIgnoreCase(key)) {
+                mFeedback.feedback(key, Feedback.EXECUTION);
+
+            } else if (CommonUtil.isNotEmpty(key) && SET3D.equalsIgnoreCase(key)) {
+                mFeedback.feedback(key, Feedback.EXECUTION);
+
+            } else if (CommonUtil.isNotEmpty(key) && SETSCREEN.equalsIgnoreCase(key)) {
+                mFeedback.feedback(key, Feedback.EXECUTION);
+
+            } else if (CommonUtil.isNotEmpty(key) && SETSIGNAL.equalsIgnoreCase(key)) {
+                mFeedback.feedback(key, Feedback.EXECUTION);
+
+            } else {
+                mFeedback.feedback("不支持命令 " + key, Feedback.EXECUTION);
+                LogUtil.w(TAG, "命令词不存在 " + key);
+            }
+        }
+
+        @Override
+        public void onTextFilter(Intent intent) {
+            LogUtil.d(TAG, "onTextFilter");
+        }
+    };
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        setAppListener(null);
+    }
+
+}

@@ -1,0 +1,143 @@
+package com.inovel.setting.view.windowview;
+
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.os.Handler;
+import android.view.KeyEvent;
+import android.view.View;
+
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import androidx.annotation.NonNull;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.windowview
+ * 工程名:Anovel
+ * 时间:2018/12/25 13:40
+ * 说明:{@link CommMenuView}辅助类
+ */
+class CommMenuViewHelper {
+
+    private static final String TAG = "CommMenuViewHelper";
+
+    /** helper对象 */
+    private View mView;
+
+    private Handler mHandler;
+
+    /** 是否执行动画中 */
+    private AtomicBoolean isAnimating = new AtomicBoolean(false);
+
+    private GlobalWindow mGlobalWindow = GlobalWindow.getInstance();
+
+    CommMenuViewHelper(View view, Handler handler) {
+        mView = view;
+        mHandler = handler;
+    }
+
+    /**
+     * 分发事件处理
+     * <p>
+     * POWER键 主要在{@link com.inovel.setting.service.ANWKeyService}处理
+     * HOME键走{@link com.inovel.setting.service.ANWKeyService}
+     *
+     * @param event 事件
+     * @return 是否消耗掉event
+     */
+    boolean dispatchKeyEvent(@NonNull KeyEvent event) {
+        LogUtil.d(TAG, "dispatchKeyEvent " + event.toString());
+
+        //如果非显示状态
+        if (!mGlobalWindow.isShow(mView)) { return false; }
+
+        if (KeyEvent.ACTION_DOWN == event.getAction()) {
+            switch (event.getKeyCode()) {
+
+//                case KeyEvent.KEYCODE_MENU://无需处理
+//                case KeyEvent.KEYCODE_HOME://无需在此处理
+                case KeyEvent.KEYCODE_BACK:
+
+                    showExitAnim(mView);
+//                    mHandler.sendEmptyMessage(CommMenuView.EVENT_PRE);
+
+                    return true;
+
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                    ((CommMenuView) mView).sendDismissHandler();
+                    return false;
+
+//                case KeyEvent.KEYCODE_TV_INPUT://
+//                case KeyEvent.KEYCODE_UNKNOWN://unknown ？
+//                case KeyEvent.KEYCODE_POWER:
+//                case KeyEvent.KEYCODE_PAGE_UP:
+//                case KeyEvent.KEYCODE_PAGE_DOWN:
+//                case 2003:
+                default:
+                    return false;
+            }
+        } else if (KeyEvent.ACTION_UP == event.getAction()) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_BACK:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                    ((CommMenuView) mView).sendDismissHandler();
+                    return false;
+                default:
+                    return false;
+            }
+
+        }
+        return false;
+    }
+
+    /**
+     * 退出动画
+     *
+     * @param view
+     */
+    public void showExitAnim(View view) {
+        if (isAnimating.compareAndSet(false, true)) {
+            if (view == null) {
+                view = mView;
+            }
+            LogUtil.i(TAG, "showExitAnim view" + view);
+            float curTranslationX = view.getTranslationX();
+            ObjectAnimator animator = ObjectAnimator.ofFloat(view, "translationX", curTranslationX, -500f);
+            animator.setDuration(300);
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    isAnimating.set(false);
+                    hide();
+                }
+
+                @Override
+                public void onAnimationStart(Animator animation) {
+                    isAnimating.set(true);
+                }
+            });
+            animator.start();
+        }
+    }
+
+    /**
+     * 隐藏view
+     */
+    void hide() {
+        if (mGlobalWindow.isShow(mView)) {
+            mGlobalWindow.hide(mView);
+        }
+    }
+}

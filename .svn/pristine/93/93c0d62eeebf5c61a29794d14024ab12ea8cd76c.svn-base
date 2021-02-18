@@ -1,0 +1,14 @@
+package com.inovel.setting.util;
+
+/**
+ * Desc: app 工具类
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.util
+ * ProjectName: anwServer
+ * Date: 2018/12/20 15:14
+ */
+public class AppUtils {
+
+
+}

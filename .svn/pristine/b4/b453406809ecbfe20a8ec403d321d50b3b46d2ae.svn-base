@@ -1,0 +1,286 @@
+package com.inovel.setting.view.holder;
+
+import android.content.Intent;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
+import android.text.TextUtils;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.SeekBar;
+import android.widget.TextView;
+
+import com.inovel.setting.Constants;
+import com.inovel.setting.R;
+import com.inovel.setting.service.ANWKeyService;
+import com.inovel.setting.view.holder.helper.IViewHolderOperate;
+import com.inovel.setting.view.holder.helper.ViewHolderOperateImpl;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.adapter.IViewHolderBinder;
+import com.lz.aiui.ai.AiItem;
+
+import java.net.URISyntaxException;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.holder
+ * 工程名:Anovel
+ * 时间:2018/12/26 11:42
+ * 说明: 有进度条的ViewHolder
+ */
+@SuppressWarnings("unchecked")
+public class SeekableViewHolder extends RecyclerView.ViewHolder implements IViewHolderBinder<AiItem> {
+
+    private static final String TAG = "SeekableViewHolder";
+
+    /**
+     * 当前进度条的模式 ，
+     * 0 代表亮度、对比度、色度、色调，设置范围0-100
+     * 1 代表清晰度，设置范围0-30
+     * 2 代表白平衡、色彩校正下的颜色设置，设置范围-10~10
+     * 3 代表梯形校正设置，设置范围-15-15
+     * 4 代表通过TvControlManager 设置的值，亮度，对比度，色饱和度，清晰度都是1-100，
+     * 5 代表通过TvControlManager 设置的值 RGB增益为：0~2047，RGB偏移：-1023~1024，但将进度条范围都是 1-100，
+     */
+    private int mCurrentMode;
+
+    public TextView name;
+    public SeekBar mSeekBar;
+    public TextView flag;
+
+    /** ViewHolder数据操作helper */
+    private IViewHolderOperate mHelper;
+
+    private Handler mHandler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    updateProgress(mSeekBar.getProgress() - 1);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    updateProgress(mSeekBar.getProgress() + 1);
+                    break;
+            }
+            return false;
+        }
+    });
+
+
+    public SeekableViewHolder(@NonNull View itemView) {
+        super(itemView);
+
+        name = itemView.findViewById(R.id.tv_menu_name);
+        mSeekBar = itemView.findViewById(R.id.sb_seekbar);
+        flag = itemView.findViewById(R.id.atv_flag);
+
+        mHelper = new ViewHolderOperateImpl(itemView.getContext()) {
+            @Override
+            public void reset(@NonNull RecyclerView.ViewHolder holder) {
+                //        holder.itemView.setOnKeyListener(null);
+                mSeekBar.setOnSeekBarChangeListener(null);//需要重置，不然由于holder缓存导致数据重置
+            }
+        };
+    }
+
+
+    @Override
+    public void bind(RecyclerView.ViewHolder holder, int position, AiItem item) {
+
+        LogUtil.d(TAG, "bind " + position + ", " + item);
+        mHelper.reset(holder);
+
+        //初始化数据
+        mSeekBar.setVisibility(View.INVISIBLE);
+        name.setText(item.getName());
+        try {
+            initProgress(item);
+//            updateProgress(TextUtils.isEmpty(item.getValue()) ? 0 : Integer.parseInt(item.getValue()));
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            updateProgress(0);
+        }
+
+        //初始化监听器
+        holder.itemView.setFocusable(true);
+        holder.itemView.setClickable(true);
+        mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                LogUtil.d(TAG, "onProgressChanged " + progress + ", " + fromUser + " ,mCurrentMode:" + mCurrentMode);
+                int result = transValue(progress);
+                LogUtil.d(TAG, "onProgressChanged " + item + ", result :" + result);
+                flag.setText(String.valueOf(result));
+//                item.setValue(result+"");
+                if (!TextUtils.isEmpty(item.getIntent())) {
+//                    ANWKeyService.sendSeekBarCMD(item.getIntent(), result);
+                    boolean isSuccess = mHelper.dispatchAction(item.getIntent(), result);
+                    LogUtil.d(TAG, "dispatchAction result? " + isSuccess);
+
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+
+//        holder.itemView.setOnClickListener(v -> LzToast.showToast(itemView.getContext(), "" + position, 2000));
+
+        holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+//                v.setBackgroundColor(Color.RED);
+                mSeekBar.setVisibility(View.VISIBLE);
+            } else {
+//                v.setBackgroundColor(Color.TRANSPARENT);
+                mSeekBar.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+            if (KeyEvent.ACTION_DOWN == event.getAction()) {
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        mHandler.sendEmptyMessage(KeyEvent.KEYCODE_DPAD_LEFT);
+                        break;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        mHandler.sendEmptyMessage(KeyEvent.KEYCODE_DPAD_RIGHT);
+                        break;
+
+                    default:
+                        return false;
+                }
+                return true;
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * 根据当前类型将进度条的值转化
+     */
+    private int transValue(int progress) {
+
+        if (mCurrentMode == 2 || mCurrentMode == 5) {
+            return progress - 10;
+        } else if (mCurrentMode == 3) {
+            return progress - 15;
+        } else {
+
+            return progress;
+        }
+
+    }
+
+    /**
+     * 初始化进度条，根据intent中不同的methodId判断当前类型
+     */
+    private void initProgress(AiItem item) {
+        if (!TextUtils.isEmpty(item.getIntent())) {
+            try {
+                Intent intentCmd = Intent.parseUri(item.getIntent(), Intent.URI_ALLOW_UNSAFE);
+                String action = intentCmd.getAction();
+
+                if (!TextUtils.isEmpty(action) && Constants.ACTION_CMD.equalsIgnoreCase(action)) {
+                    String params = intentCmd.getStringExtra("params");
+                    if (!TextUtils.isEmpty(params) && (params.equalsIgnoreCase(ANWKeyService.BRIGHTNESS)
+                            || params.equalsIgnoreCase(ANWKeyService.CONTRAST)
+                            || params.equalsIgnoreCase(ANWKeyService.CHROMA)
+                            || params.equalsIgnoreCase(ANWKeyService.TONE))) {
+
+                        mSeekBar.setMax(100);
+                        mCurrentMode = 0;
+
+                    } else if (!TextUtils.isEmpty(params) && (params.equalsIgnoreCase(ANWKeyService.RESOLUTION))) {
+                        mSeekBar.setMax(30);
+                        mCurrentMode = 1;
+
+                    } else if (!TextUtils.isEmpty(params) && (params.equalsIgnoreCase(ANWKeyService.KEYSTONE))) {
+                        mSeekBar.setMax(30);
+                        mCurrentMode = 3;
+
+                    } else {
+                        mSeekBar.setMax(20);
+                        mCurrentMode = 2;
+                    }
+                    LogUtil.i(TAG, "params:" + params + " ,mCurrentMode :" + mCurrentMode);
+                } else if (!TextUtils.isEmpty(action) && Constants.ACTION_IMAGE_CMD.equalsIgnoreCase(action)) {
+
+                    mCurrentMode = 4;
+
+                    String methodId = intentCmd.getStringExtra("methodId");
+                    String params = intentCmd.getStringExtra("params");
+                    if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetWhiteBalance")) {
+                        mCurrentMode = 5;
+                        mSeekBar.setMax(20);
+                        float result = 0;
+                        if (!TextUtils.isEmpty(params) && params.contains("gain")) {
+
+                            result = 20 * Float.valueOf(item.getValue()) / 2047;
+
+                        } else if (!TextUtils.isEmpty(params) && params.contains("offset")) {
+                            float temp = (Float.valueOf(item.getValue()) + 1023) < 0 ? 0 : (Float.valueOf(item.getValue()) + 1023);
+
+                            result = 20 * temp /2047;
+                        }
+                        LogUtil.i(TAG, "result:" + result);
+                        item.setValue(String.valueOf((int) (Math.round(result))));
+                        flag.setText(String.valueOf((int) (Math.round(result) - 10)));
+
+                    } else {
+                        flag.setText(item.getValue());
+                        mSeekBar.setMax(100);
+                        item.setValue(item.getValue());
+
+                    }
+                    LogUtil.i(TAG, "action:" + action + " ,mCurrentMode :" + mCurrentMode);
+                }
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+            }
+        }
+        updateProgress(TextUtils.isEmpty(item.getValue()) ? 0 : Integer.parseInt(item.getValue()));
+    }
+
+
+    /**
+     * 更新进度
+     *
+     * @param progress 进度
+     */
+    private void updateProgress(int progress) {
+        int p = checkProgress(progress);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mSeekBar.setProgress(p, true);
+        } else {
+            mSeekBar.setProgress(p);
+        }
+    }
+
+    /**
+     * 校验进度
+     *
+     * @param progress 传入进度
+     * @return 正确阈值
+     */
+    private int checkProgress(int progress) {
+        if (progress < 0) {
+            return 0;
+        } else if (progress > mSeekBar.getMax()) {
+            return mSeekBar.getMax();
+        }
+        return progress;
+    }
+}

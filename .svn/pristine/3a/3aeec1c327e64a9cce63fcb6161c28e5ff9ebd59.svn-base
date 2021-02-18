@@ -1,0 +1,257 @@
+package com.inovel.setting.service;
+
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.os.IBinder;
+import android.text.TextUtils;
+
+import com.inovel.inovelsocketlib.ClientSocket;
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.lunzn.tool.log.LogUtil;
+
+import org.json.JSONObject;
+
+import java.net.URISyntaxException;
+
+import androidx.annotation.Nullable;
+
+/**
+ * Desc:
+ * <p> 创建监听按键的服务
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/13 17:17
+ */
+public class ANWKeyService extends Service {
+
+    private static final String TAG = ANWKeyService.class.getSimpleName();
+    public static final String KEY_EVENT = "keyevent";
+    public static final String KEY_POWER = "KEY_POWER";
+    public static final String KEY_THREED = "KEY_THREED";
+    public static final String KEY_SIGNAL = "KEY_SIGNAL";
+    public static final String KEY_MAIN = "KEY_MAIN";
+
+    public static final String CMD = "cmd";
+    public static final String HDMI_CMD = "hdmicmd";
+    public static final String BRIGHTNESS = "brightness";
+    public static final String CONTRAST = "contrast";
+    public static final String CHROMA = "chroma";
+    public static final String TONE = "tone";
+    public static final String RESOLUTION = "resolution";
+    public static final String KEYSTONE = "keystone";
+
+    //当前点击Power键的时间
+    private long mCurrentKeyTime;
+
+
+    //当前3D模式的状态 0是关闭3d，1是蓝光3d,2是左右模式，3是上下模式
+    public static int mCurState;
+
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        SocketManager.instance().createSocket().setConnectCallback(new ClientSocket.IConnectCallback() {
+            @Override
+            public void onConnected() {
+                LogUtil.d(TAG, "onConnected");
+
+                SocketManager.instance().createSocket().setReceiveCallback(new ClientSocket.IReceiveCallback() {
+                    @Override
+                    public void onResult(JSONObject jsonObject) {
+                        //接收socket server端发回的消息
+                        LogUtil.d(TAG, "jsonObject " + jsonObject.toString());
+                        final String methodId = jsonObject.optString("methodId");
+                        String msg = jsonObject.optString("msg");
+                        if (TextUtils.equals(methodId, "Switch3D")) {
+                            if (TextUtils.equals(msg, "success")) {
+                                LogUtil.d(TAG, "切换3d成功");
+                            } else {
+                                LogUtil.d(TAG, "切换3d失败");
+                            }
+                        } else if (TextUtils.equals(methodId, "Get3dState")) {
+                            if (TextUtils.equals(msg, "success")) {
+                                JSONObject data = jsonObject.optJSONObject("data");
+                                mCurState = data.optInt("format");
+                                LogUtil.d(TAG, "获取3d状态成功 mCurState:" + mCurState);
+                            } else {
+                                LogUtil.d(TAG, "获取3d状态失败");
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onError(String s) {
+                        LogUtil.i(TAG, "onError = " + s);
+                    }
+                });
+
+            }
+
+            @Override
+            public void onDisconnected() {
+                LogUtil.d(TAG, "onDisconnected");
+            }
+        }).connectServer();
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra(KEY_EVENT)) {
+            String event = intent.getStringExtra(KEY_EVENT);
+            LogUtil.d(TAG, "onStartCommand#event = " + event);
+            if (null != event) {
+                switch (event) {
+                    case KEY_POWER:
+                        clickPower();
+                        break;
+                    case KEY_THREED:
+                        SocketManager.instance().createSocket().setMethodId("Get3dState").send();
+                        break;
+                    case KEY_SIGNAL:
+                        break;
+                    case KEY_MAIN:
+                        break;
+                }
+            }
+        }
+        return START_STICKY;
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        SocketManager.instance().createSocket().onDestroy();
+    }
+
+
+    /**
+     * 点击电源键
+     */
+    private void clickPower() {
+        LogUtil.i(TAG, "clickPower");
+        long clickTime = System.currentTimeMillis();
+        // 判断距离上次点击小于1s
+        if (Math.abs(clickTime - mCurrentKeyTime) < 1000) {
+            LogUtil.i(TAG, "clickPower shotDown");
+            //直接关机
+            PowerKeyUtils.shotDown(getApplicationContext());
+            return;
+        }
+        mCurrentKeyTime = clickTime;
+        //屏幕是点亮状态
+        if (PowerKeyUtils.isScreenOn(getApplicationContext())) {
+            // 弹出关机页面
+            LogUtil.i(TAG, "clickPower showPowerView");
+            PowerKeyUtils.showPowerView(getApplicationContext());
+        } else {
+            LogUtil.i(TAG, "clickPower screenOffOrOn");
+            // 点亮屏幕
+            PowerKeyUtils.screenOffOrOn();
+            if (SocketManager.instance().createSocket().isConnected()) {
+                SocketManager.instance()
+                        .createSocket()
+                        .setMethodId("SetScreenState")
+                        .setParameter("state", 1)// 0是关，1是开
+                        .send();
+            }
+        }
+    }
+
+    /**
+     * 发送命令到机器
+     *
+     * @param intent
+     */
+    public static void sendCMD(Context context, String intent) {
+        if (intent != null && !intent.equalsIgnoreCase("")) {
+            String action;
+//            String methodId;
+//            int state;
+
+            try {
+                Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+                action = intentCmd.getAction();
+                LogUtil.i(TAG, "sendCMD action:" + action);
+                if (null != action) {
+                    if (CMD.equals(action)) {
+//                        methodId = intentCmd.getStringExtra("methodId");
+//                        state = Integer.parseInt(intentCmd.getStringExtra("state"));
+//                        LogUtil.i("sendCMD:methodId:" + methodId + " state:" + state);
+//                        SocketManager.instance().createSocket().setMethodId(methodId).setParameter("format", state).send();
+                        sendSimpleCMD(intentCmd);
+                    } else if (HDMI_CMD.equals(action)) {
+                        String id = intentCmd.getStringExtra("id");
+                        LogUtil.i(TAG, "sendCMD:id:" + id);
+                        // 切换信源
+//                        PowerKeyUtils.checkSource(context, DataFormat.getInteger(id));
+                    }
+                }
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    /**
+     * 该方法仅向机器发送获取状态的命令和状态值固定的命令（即不是拖动条，选择一定范围的命令）
+     *
+     * @param intentCmd
+     */
+    private static void sendSimpleCMD(Intent intentCmd) {
+        String methodId = intentCmd.getStringExtra("methodId");
+        String param = intentCmd.getStringExtra("params");
+        if (param != null && param.trim() != "") {
+            int state = -1;
+            if (intentCmd.getStringExtra("state") != null && intentCmd.getStringExtra("state").trim() != "") {
+                state = Integer.parseInt(intentCmd.getStringExtra("state"));
+            }
+
+            LogUtil.i("sendCMD:methodId:" + methodId + " param:" + param + " state:" + state);
+            if (state != -1) {
+
+                SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, state).send();
+            }
+
+        } else {
+
+            SocketManager.instance().createSocket().setMethodId(methodId).send();
+        }
+
+    }
+
+    /**
+     * 该方法向机器发送非状态值固定的命令（即有拖动条的参数）
+     */
+    public static void sendSeekBarCMD(String intent, int value) {
+        try {
+            Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+            String action = intentCmd.getAction();
+            LogUtil.i(TAG, "sendCMD action:" + action);
+            if (null != action && CMD.equalsIgnoreCase(action)) {
+                String methodId = intentCmd.getStringExtra("methodId");
+                String param = intentCmd.getStringExtra("params");
+                if (!TextUtils.isEmpty(methodId) && !TextUtils.isEmpty(param)) {
+                    SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, value).send();
+
+                }
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+}

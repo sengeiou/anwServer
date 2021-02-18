@@ -1,0 +1,89 @@
+apply plugin: 'com.android.application'
+
+
+
+def static releaseTime() {
+    return new Date().format("yyyyMMdd", TimeZone.getTimeZone("UTC"))
+}
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.inovel.setting"
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 7
+        versionName "1.6"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+
+        release {
+            storeFile file("../config/sysinovel.jks")
+            storePassword "123456"
+            keyAlias "key0"
+            keyPassword "123456"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig = signingConfigs.release
+            buildConfigField("boolean", "LOG", "false")
+            debuggable false
+        }
+
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig = signingConfigs.release
+            buildConfigField("boolean", "LOG", "true")
+            debuggable true
+
+        }
+    }
+
+    compileOptions {
+        targetCompatibility 1.8
+        sourceCompatibility 1.8
+    }
+
+
+    // 自定义输出配置
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            // 输出apk名称为lzsmartcontrol-v1.0-C2-xxxx-time.apk
+            outputFileName = "inovel-V${defaultConfig.versionName}-C${defaultConfig.versionCode}-${variant.getBuildType().name}-${releaseTime()}.apk"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha3'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test:runner:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+    implementation 'com.lunzn:tool:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation("androidx.annotation:annotation:1.0.1")
+    implementation files('libs/inovelSocketLib.jar')
+    implementation files('libs/XiriFeedback.jar')
+    implementation files('libs/XiriFocusScene.jar')
+    implementation files('libs/XiriScene.jar')
+    implementation files('libs/AppService.jar')
+    implementation 'com.jakewharton:butterknife:9.0.0-SNAPSHOT'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:9.0.0-SNAPSHOT'
+    implementation project(':aiui')
+    implementation('com.github.hotchemi:permissionsdispatcher:3.1.0') {
+        exclude module: 'support-v13'
+    }
+    annotationProcessor 'com.github.hotchemi:permissionsdispatcher-processor:3.1.0'
+    implementation files('libs/droidlogic.jar')
+    implementation 'com.lunzn:xiriparse:1.0.4'
+
+}

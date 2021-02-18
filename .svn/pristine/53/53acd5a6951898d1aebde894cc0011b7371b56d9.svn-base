@@ -1,0 +1,20 @@
+package com.inovel.setting.global;
+
+/**
+ * Desc: 全局常量
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.global
+ * ProjectName: anwServer
+ * Date: 2018/12/18 15:08
+ */
+public interface GlobalConstant {
+    //发送信源ID的key
+    String TV_CURRENT_DEVICE_ID = "tv_current_device_id";
+    //跳转切换信源的URI
+    String COMPONENT_TV_APP = "com.droidlogic.tvsource/com.droidlogic.tvsource.DroidLogicTv";
+    // 信源
+    String SOURCE = "source";
+
+
+}

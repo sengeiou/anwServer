@@ -1,0 +1,574 @@
+package com.inovel.setting.service;
+
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+import android.os.Message;
+import android.text.TextUtils;
+import android.view.View;
+
+import com.droidlogic.app.tv.TvControlManager;
+import com.inovel.inovelsocketlib.ClientSocket;
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.Constants;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+import com.smart.data.DataFormat;
+
+import org.json.JSONObject;
+
+import java.net.URISyntaxException;
+
+import androidx.annotation.Nullable;
+
+/**
+ * Desc:
+ * <p> 创建监听按键的服务
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/13 17:17
+ */
+public class ANWKeyService extends Service {
+
+    private static final String TAG = ANWKeyService.class.getSimpleName();
+    public static final String KEY_EVENT = "keyevent";
+    public static final String KEY_POWER = "KEY_POWER";
+    public static final String KEY_THREED = "KEY_THREED";
+    public static final String KEY_SOURCE = "KEY_SOURCE";
+    public static final String KEY_SETTINGS = "KEY_SETTINGS";
+    public static final String KEY_HOME = "KEY_HOME";
+
+    public static final String CMD = "cmd";
+    public static final String HDMI_CMD = "hdmicmd";
+    public static final String BRIGHTNESS = "brightness";
+    public static final String CONTRAST = "contrast";
+    public static final String CHROMA = "chroma";
+    public static final String TONE = "tone";
+    public static final String RESOLUTION = "resolution";
+    public static final String KEYSTONE = "keystone";
+
+
+    //当前点击Power键的时间
+    private long mCurrentKeyTime;
+
+    /** 当前3D模式的状态 0是关闭3d，1是蓝光3d,2是左右模式，3是上下模式 */
+    public static int mCurState;
+
+    /** 当前的菜单类型，0代表设置，1代表信源，2代表3D */
+    public static int mCurrentType = 0;
+    private static final int CLICK_SPACE_TIME = 1000;
+
+    /** 图像模式的设置类 */
+    public static TvControlManager mTvControlManager;
+
+    /** 当前色温模式 */
+    public static int mColortemp = 0;
+
+    /** 当前图像降噪模式 */
+    public static int mNoiseReductionMode= 0;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        connectSocket();
+    }
+
+    private void connectSocket() {
+
+        //初始化图像模式设置类
+        mTvControlManager = TvControlManager.open();
+        LogUtil.d(TAG, "初始化 TvControlManager：" + mTvControlManager);
+
+        SocketManager.instance().createSocket().setConnectCallback(new ClientSocket.IConnectCallback() {
+            @Override
+            public void onConnected() {
+                LogUtil.d(TAG, "onConnected");
+
+                SocketManager.instance().createSocket().setReceiveCallback(new ClientSocket.IReceiveCallback() {
+                    @Override
+                    public void onResult(JSONObject jsonObject) {
+                        //接收socket server端发回的消息
+                        LogUtil.d(TAG, "jsonObject " + jsonObject.toString());
+                        String msg = jsonObject.optString("msg");
+
+                        if (TextUtils.equals(msg, "success")) {
+                            LogUtil.d(TAG, "==============执行命令成功================");
+                            if (jsonObject.has("data")) {
+                                JSONObject data = jsonObject.optJSONObject("data");
+                                LogUtil.d(TAG, "data:" + data.toString());
+                                Message message = Message.obtain();
+                                message.what = CommMenuView.EVENT_REFRESH;
+                                message.obj = data;
+                                CommMenuView.getInstance(getApplicationContext()).onEvent(message);
+                            }
+
+                        } else {
+                            LogUtil.d(TAG, "==========执行命令失败========================");
+                        }
+
+//                        final String methodId = jsonObject.optString("methodId");
+//                        if (TextUtils.equals(methodId, "Switch3D")) {
+//                            if (TextUtils.equals(msg, "success")) {
+//                                LogUtil.d(TAG, "切换3d成功");
+//                            } else {
+//                                LogUtil.d(TAG, "切换3d失败");
+//                            }
+//                        } else if (TextUtils.equals(methodId, "Get3dState")) {
+//                            if (TextUtils.equals(msg, "success")) {
+//                                JSONObject data = jsonObject.optJSONObject("data");
+//                                mCurState = data.optInt("format");
+//                                LogUtil.d(TAG, "获取3d状态成功 mCurState:" + mCurState);
+//                            } else {
+//                                LogUtil.d(TAG, "获取3d状态失败");
+//                            }
+//                        }
+                    }
+
+                    @Override
+                    public void onError(String s) {
+                        LogUtil.i(TAG, "onError = " + s);
+                    }
+                });
+
+            }
+
+            @Override
+            public void onDisconnected() {
+                LogUtil.d(TAG, "onDisconnected");
+            }
+        }).connectServer();
+    }
+
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra(KEY_EVENT)) {
+            String event = intent.getStringExtra(KEY_EVENT);
+            LogUtil.d(TAG, "onStartCommand#event = " + event);
+            if (null != event) {
+                switch (event) {
+                    case KEY_POWER:
+                        clickPower();
+                        break;
+                    case KEY_THREED:
+                        showMenu(2, "3d");
+                        break;
+                    case KEY_SOURCE:
+                        showMenu(1, "signal");
+                        break;
+                    case KEY_SETTINGS:
+                        showMenu(0, "set");
+                        break;
+                    case KEY_HOME:
+                        if (GlobalWindow.getInstance().isTop()) {
+                            GlobalWindow.getInstance().hideAll();
+                        }
+                        break;
+                }
+            }
+        }
+        return START_STICKY;
+    }
+
+    /**
+     * 点击3D键、设置键、信源键的操作
+     */
+    private void showMenu(int type, String tag) {
+        ANWKeyService.mCurrentType = type;
+        LogUtil.d("---ANWKeyService.mCurrentType:" + ANWKeyService.mCurrentType);
+
+        View view = GlobalWindow.getInstance().findViewByTag(tag);
+        LogUtil.d("view:" + view + " GlobalWindow.getInstance().isTop " + GlobalWindow.getInstance().isTop(view));
+
+        if (view == null || !GlobalWindow.getInstance().isTop(view)) {
+
+            if (GlobalWindow.getInstance().isTop()) {
+
+                GlobalWindow.getInstance().hideAll();
+            }
+            View v = new CommMenuView(getApplicationContext());
+//        SocketManager.instance().createSocket().setMethodId("Get3dState").send();
+            v.setTag(tag);
+            GlobalWindow.getInstance()
+                    .with(getApplicationContext())
+                    .show(v, new GlobalWindow.OnWindowVisibleChangeListener() {
+                        @Override
+                        public void onShow(View v, boolean isShow) {
+                            LogUtil.d("isShow:" + isShow);
+                            if (isShow) {
+                                ((CommMenuView) v).sendDismissHandler();
+                            }
+                        }
+                    });
+        }
+
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        SocketManager.instance().createSocket().onDestroy();
+    }
+
+
+    /**
+     * 点击电源键
+     */
+    private void clickPower() {
+        LogUtil.i(TAG, "clickPower");
+        long clickTime = System.currentTimeMillis();
+        // 判断距离上次点击小于1s
+        if (Math.abs(clickTime - mCurrentKeyTime) < CLICK_SPACE_TIME) {
+            LogUtil.i(TAG, "clickPower shotDown");
+            // 直接关机
+            // PowerKeyUtils.shotDown(getApplicationContext());
+            return;
+        }
+        mCurrentKeyTime = clickTime;
+        // 判断距离上次点击大于1s，获取屏幕当前状态
+        PowerKeyUtils.getScreenStatus();
+    }
+
+    /**
+     * 发送命令到机器
+     *
+     * @param intent
+     */
+    public static void sendCMD(String intent) {
+        if (!TextUtils.isEmpty(intent)) {
+            String action;
+            try {
+                Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+                action = intentCmd.getAction();
+                LogUtil.i(TAG, "sendCMD action:" + action);
+                if (null != action) {
+                    if (CMD.equals(action)) {
+                        sendSimpleCMD(intentCmd);
+                    } else if (HDMI_CMD.equals(action)) {
+                        String id = intentCmd.getStringExtra("id");
+                        LogUtil.i(TAG, "sendCMD:id:" + id);
+                        // 切换信源
+                        PowerKeyUtils.checkSource(DataFormat.getInteger(id));
+                    }
+                }
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    /**
+     * 该方法仅向机器发送获取状态的命令和状态值固定的命令（即不是拖动条，选择一定范围的命令）
+     *
+     * @param intentCmd
+     */
+    private static void sendSimpleCMD(Intent intentCmd) {
+        String methodId = intentCmd.getStringExtra("methodId");
+        String param = intentCmd.getStringExtra("params");
+        if (param != null && param.trim() != "") {
+            int state = -1;
+            if (intentCmd.getStringExtra("state") != null && intentCmd.getStringExtra("state").trim() != "") {
+                state = Integer.parseInt(intentCmd.getStringExtra("state"));
+            }
+
+            LogUtil.i("sendCMD:methodId:" + methodId + " param:" + param + " state:" + state);
+            if (state != -1) {
+
+                SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, state).send();
+            }
+
+        } else {
+
+            SocketManager.instance().createSocket().setMethodId(methodId).send();
+        }
+
+    }
+
+    /**
+     * 该方法向机器发送非状态值固定的命令（即有拖动条的参数）
+     */
+    public static void sendSeekBarCMD(String intent, int value) {
+        try {
+            Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+            String action = intentCmd.getAction();
+            LogUtil.i(TAG, "sendCMD action:" + action);
+            if (null != action && CMD.equalsIgnoreCase(action)) {
+                String methodId = intentCmd.getStringExtra("methodId");
+                String param = intentCmd.getStringExtra("params");
+                if (!TextUtils.isEmpty(methodId) && !TextUtils.isEmpty(param)) {
+                    SocketManager.instance().createSocket().setMethodId(methodId).setParameter(param, value).send();
+
+                }
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    /**
+     * 该方法向机器发送图像相关的命令
+     */
+    public static void sendImageCMD(String intent, int value) {
+        try {
+            Intent intentCmd = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+            String action = intentCmd.getAction();
+            LogUtil.i(TAG, "sendImageCMD action:" + action);
+            if (null != action && Constants.ACTION_IMAGE_CMD.equalsIgnoreCase(action)) {
+                String methodId = intentCmd.getStringExtra("methodId");
+                String param = intentCmd.getStringExtra("params");
+                String state = intentCmd.getStringExtra("state");
+                LogUtil.i(TAG, " methodId:" + methodId + " param:" + param + " state:" + state);
+                if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetImageMode")) {
+                    int ret = mTvControlManager.GetPQMode(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " GetPQMode " + ret);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageMode")) {
+                    setImageMode(param, state);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("getImageModeUserDefine")) {
+                    //点击自定义的同时需要设置自定义和获取自定义下的子菜单状态
+                    int ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_USER,
+                            TvControlManager.SourceInput.TV, 1);
+                    LogUtil.i(TAG, " getImageModeUserDefine " + ret);
+
+                    int bright = mTvControlManager.GetBrightness(TvControlManager.SourceInput.TV);
+                    int contrast = mTvControlManager.GetContrast(TvControlManager.SourceInput.TV);
+                    int saturation = mTvControlManager.GetSaturation(TvControlManager.SourceInput.TV);
+                    int sharpness = mTvControlManager.GetSharpness(TvControlManager.SourceInput.TV);
+
+                    LogUtil.i(TAG, " bright " + bright+" contrast " + contrast+" saturation "
+                            + saturation+" sharpness " + sharpness);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageModeUserDefine")) {
+
+                    setImageModeUserDefine(param, value);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("getColortemp")) {
+                    int ret =mTvControlManager.GetColorTemperature(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " getColortemp " + ret);
+
+                } else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetColortemp")) {
+                    setColortemp(param,state);
+
+                }else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetWhiteBalance")) {
+                    getWhiteBalance(param);
+
+                }else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetWhiteBalance")) {
+                    setWhiteBalance(param,value);
+
+                }else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("GetNoiseReductionMode")) {
+                    mNoiseReductionMode =mTvControlManager.GetNoiseReductionMode(TvControlManager.SourceInput.TV);
+                    LogUtil.i(TAG, " GetNoiseReductionMode " + mNoiseReductionMode);
+
+                }else if (!TextUtils.isEmpty(methodId) && methodId.equalsIgnoreCase("SetImageDenoising")) {
+                    setImageDenoising(param,state);
+
+                }
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+    /**
+     * 设置降噪模式
+     */
+    private static void setImageDenoising(String param, String state) {
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            switch (state) {
+                case "0":
+                    ret =mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_CLOSE,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    ret =mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_WEAK,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "2":
+                    ret =mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_MID,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "3":
+                    ret =mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCE_NOISE_STRONG,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "4":
+                    ret =mTvControlManager.SetNoiseReductionMode(TvControlManager.Noise_Reduction_Mode.REDUCTION_MODE_AUTO,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+            }
+            LogUtil.i(TAG, " setImageDenoising  ret " + ret);
+        }
+    }
+
+    /**
+     * 设置RGB增益和偏移
+     */
+    private static void setWhiteBalance(String param, int value) {
+        if (!TextUtils.isEmpty(param)) {
+            int ret = -1;
+            float result = value;
+            switch (param) {
+                case "rgain":
+                    result = 2047 * result/100;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetRedGain(0,mColortemp, (int)result);
+                    break;
+                case "roffset":
+                    result = 2047 * result/100 -1023;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetRedOffset(0,mColortemp, (int)result);
+                    break;
+                case "ggain":
+                    result = 2047 * result/100;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetGreenGain(0,mColortemp, (int)result);
+                    break;
+                case "goffset":
+                    result = 2047 * result/100 -1023;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetGreenOffset(0,mColortemp, (int)result);
+                    break;
+                case "bgain":
+                    result = 2047 * result/100;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetBlueGain(0,mColortemp, (int)result);
+                    break;
+                case "boffset":
+                    result = 2047 * result/100 -1023;
+                    ret = mTvControlManager.FactoryWhiteBalanceSetBlueOffset(0,mColortemp, (int)result);
+                    break;
+
+
+            }
+            LogUtil.i(TAG, " setWhiteBalance  ret " + ret+" result:"+result);
+        }
+    }
+
+    /**
+     * 获取RGB增益和偏移
+     */
+    private static void getWhiteBalance(String param) {
+        if (!TextUtils.isEmpty(param)) {
+            int gain = -1;
+            int offset =-1;
+            switch (param) {
+                case "red":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetRedGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetRedOffset(0, mColortemp);
+
+                    break;
+                case "green":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetGreenGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetGreenOffset(0, mColortemp);
+                    break;
+                case "blue":
+                    gain = mTvControlManager.FactoryWhiteBalanceGetBlueGain(0, mColortemp);
+                    offset = mTvControlManager.FactoryWhiteBalanceGetBlueOffset(0, mColortemp);
+                    break;
+
+            }
+            LogUtil.i(TAG, " getWhiteBalance  gain " + gain+" offset:"+offset);
+        }else {
+            mColortemp =mTvControlManager.GetColorTemperature(TvControlManager.SourceInput.TV);
+            LogUtil.i(TAG, " mColortemp " + mColortemp);
+        }
+    }
+
+    /**
+     * 设置图像模式
+     */
+    public static void setImageMode(String param, String state) {
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            switch (state) {
+                case "0":
+                    ret =mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_STANDARD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    ret =mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_BRIGHT,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "2":
+                    ret =mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_SOFTNESS,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "3":
+                    ret =mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_USER,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "4":
+                    ret = mTvControlManager.SetPQMode(TvControlManager.Pq_Mode.PQ_MODE_MOVIE,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+            }
+            LogUtil.i(TAG, " setImageMode  ret " + ret);
+        }
+    }
+
+    /**
+     * 设置亮度，对比度，色饱和度，清晰度：
+     */
+    public static void setImageModeUserDefine(String param, int value) {
+        if (!TextUtils.isEmpty(param)) {
+            int ret = -1;
+            switch (param) {
+                case "brightness":
+                    ret = mTvControlManager.SetBrightness(value,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "contrast":
+                    ret = mTvControlManager.SetContrast(value,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "saturation":
+                    ret = mTvControlManager.SetSaturation(value,
+                            TvControlManager.SourceInput.TV, mTvControlManager.GetCurrentSignalInfo().fmt, 1);
+                    break;
+                case "resolution":
+                    ret = mTvControlManager.SetSharpness(value,
+                            TvControlManager.SourceInput.TV, 1, 0, 1);
+                    break;
+
+            }
+            LogUtil.i(TAG, " setImageModeUserDefine  ret " + ret+" value: "+value);
+        }
+    }
+
+    /**
+     * 设置色温：
+     */
+    public static void setColortemp(String param, String state) {
+
+        if (!TextUtils.isEmpty(param) && !TextUtils.isEmpty(state)) {
+            int ret = -1;
+            switch (state) {
+                case "0":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_STANDARD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "1":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_WARM,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+                case "2":
+                    ret = mTvControlManager.SetColorTemperature(TvControlManager.color_temperature.COLOR_TEMP_COLD,
+                            TvControlManager.SourceInput.TV, 1);
+                    break;
+
+            }
+            LogUtil.i(TAG, " setColortemp  ret " + ret);
+        }
+    }
+}

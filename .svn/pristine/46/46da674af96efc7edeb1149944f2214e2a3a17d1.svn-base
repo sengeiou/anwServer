@@ -1,0 +1,1259 @@
+{
+  "priority": "1",
+  "name": "菜单",
+  "attrs": {
+    "iconType": "1",
+    "bgType": "1",
+    "checkable": "0",
+    "mulCheckable": "0",
+    "seekable": ""
+  },
+  "value": "",
+  "intent": "",
+  "subs": [
+    {
+      "priority": "1",
+      "name": "画面设置",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "0",
+        "mulCheckable": "0",
+        "value": "",
+        "seekable": ""
+      },
+      "intent": "",
+      "subs": [
+        {
+          "priority": "1",
+          "name": "图像模式",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "0",
+            "mulCheckable": "0",
+            "value": "",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetImageMode;end",
+          "subs": [
+            {
+              "priority": "1",
+              "name": "标准",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageMode;S.params=imageMode;S.state=0;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "明亮",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageMode;S.params=imageMode;S.state=1;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "照片",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageMode;S.params=imageMode;S.state=5;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "电影",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageMode;S.params=imageMode;S.state=4;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "自定义",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=getImageModeUserDefine;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "亮度",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": "1"
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageModeUserDefine;S.params=brightness;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "对比度",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": "1"
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageModeUserDefine;S.params=contrast;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "饱和度",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": "1"
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageModeUserDefine;S.params=saturation;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "清晰度",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": "1"
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageModeUserDefine;S.params=resolution;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "priority": "1",
+          "name": "高级设置",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "0",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetImageSettings;end",
+          "value": "",
+          "subs": [
+            {
+              "priority": "1",
+              "name": "图像降噪",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetNoiseReductionMode;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "关",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageDenoising;S.params=value;S.state=0;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "低",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageDenoising;S.params=value;S.state=1;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "中",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageDenoising;S.params=value;S.state=2;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "高",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageDenoising;S.params=value;S.state=3;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "自动",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetImageDenoising;S.params=value;S.state=4;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "色温",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=getColortemp;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "标准",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetColortemp;S.params=value;S.state=0;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "暖色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetColortemp;S.params=value;S.state=1;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "冷色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetColortemp;S.params=value;S.state=2;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "白平衡",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetWhiteBalance;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "红色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetWhiteBalance;S.params=red;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "红色增益",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=rgain;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "红色偏差",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=roffset;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "绿色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetWhiteBalance;S.params=green;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "绿色增益",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=ggain;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "绿色偏差",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=goffset;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "蓝色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=GetWhiteBalance;S.params=blue;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "蓝色增益",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=bgain;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "蓝色偏差",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=image_cmd;S.methodId=SetWhiteBalance;S.params=boffset;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "色彩校正",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=ColorCorrection;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "红色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=red-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "红色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=redH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "红色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=redS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "红色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=redV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "绿色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=green-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "绿色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=greenH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "绿色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=greenS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "绿色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=greenV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "蓝色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=blue-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "蓝色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=blueH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "蓝色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=blueS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "蓝色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=blueV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "青色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=cyan-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "青色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=cyanH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "青色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=cyanS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "青色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=cyanV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "黄色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=yellow-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "黄色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=yellowH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "黄色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=yellowS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "黄色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=yellowV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                },
+                {
+                  "priority": "1",
+                  "name": "紫色",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetColorCorrection;S.explicit=purple-HSV;end",
+                  "value": "",
+                  "subs": [
+                    {
+                      "priority": "1",
+                      "name": "紫色色调",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=purpleH;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "紫色饱和度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=purpleS;end",
+                      "value": "",
+                      "subs": []
+                    },
+                    {
+                      "priority": "1",
+                      "name": "紫色亮度",
+                      "attrs": {
+                        "iconType": "1",
+                        "bgType": "1",
+                        "checkable": "0",
+                        "mulCheckable": "0",
+                        "seekable": "1"
+                      },
+                      "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetColorCorrection;S.params=purpleV;end",
+                      "value": "",
+                      "subs": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "priority": "1",
+          "name": "光源设置",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "0",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetImageSettings;S.explicit=LightSource;end",
+          "value": "",
+          "subs": [
+            {
+              "priority": "1",
+              "name": "明亮",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetLightSource;S.params=value;S.state=0;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "标准",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetLightSource;S.params=value;S.state=1;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "自定义",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "1",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetLightSource;S.params=value;S.state=15;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "光源亮度",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "0",
+                    "mulCheckable": "0",
+                    "seekable": "1"
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetLightSource;S.params=value;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "priority": "1",
+          "name": "功能设置",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "0",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetFuncSettingState;S.explicit=keystone;end",
+          "value": "",
+          "subs": [
+            {
+              "priority": "1",
+              "name": "安装模式",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetFuncSettingState;S.explicit=installMode;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "桌面正投",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetProjectInstallMode;S.params=mode;S.state=0;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "吊装正投",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetProjectInstallMode;S.params=mode;S.state=1;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "桌面背投",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetProjectInstallMode;S.params=mode;S.state=2;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "吊装背投",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetProjectInstallMode;S.params=mode;S.state=3;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "中控控制",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetFuncSettingState;S.explicit=csValue;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "开",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "seekable": "",
+                    "mulCheckable": "0"
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetCentralControl;S.params=csValue;S.state=1;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "关",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetCentralControl;S.params=csValue;S.state=0;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "人眼保护",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=GetFuncSettingState;S.explicit=eyeProtectValue;end",
+              "value": "",
+              "subs": [
+                {
+                  "priority": "1",
+                  "name": "开",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetEyeProtect;S.params=eyeProtectValue;S.state=1;end",
+                  "value": "",
+                  "subs": []
+                },
+                {
+                  "priority": "1",
+                  "name": "关",
+                  "attrs": {
+                    "iconType": "1",
+                    "bgType": "1",
+                    "checkable": "1",
+                    "mulCheckable": "0",
+                    "seekable": ""
+                  },
+                  "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetEyeProtect;S.params=eyeProtectValue;S.state=0;end",
+                  "value": "",
+                  "subs": []
+                }
+              ]
+            },
+            {
+              "priority": "1",
+              "name": "梯形校正",
+              "attrs": {
+                "iconType": "1",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": "1"
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetDLPKeystone;S.params=keystone;end",
+              "value": "",
+              "subs": []
+            }
+          ]
+        },
+        {
+          "priority": "1",
+          "name": "重置画面设置",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "0",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "",
+          "value": "",
+          "subs": [
+            {
+              "priority": "1",
+              "name": "确定",
+              "attrs": {
+                "iconType": "",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=SetImageSettingDefault;end",
+              "value": "",
+              "subs": []
+            },
+            {
+              "priority": "1",
+              "name": "取消",
+              "attrs": {
+                "iconType": "",
+                "bgType": "1",
+                "checkable": "0",
+                "mulCheckable": "0",
+                "seekable": ""
+              },
+              "intent": "#Intent;S.action_inovel=cmd;S.methodId=back;end",
+              "value": "",
+              "subs": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "priority": "1",
+      "name": "信源设置",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "0",
+        "mulCheckable": "0",
+        "value": "",
+        "seekable": ""
+      },
+      "intent": "#Intent;S.action_inovel=source;end",
+      "subs": [
+        {
+          "priority": "1",
+          "name": "HDMI1",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "value": ""
+          },
+          "intent": "#Intent;S.action_inovel=hdmicmd;S.id=6;end",
+          "seekable": "",
+          "subs": []
+        },
+        {
+          "priority": "1",
+          "name": "HDMI2",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=hdmicmd;S.id=7;end",
+          "value": "",
+          "subs": []
+        }
+      ]
+    },
+    {
+      "priority": "1",
+      "name": "3D设置",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "0",
+        "mulCheckable": "0",
+        "seekable": ""
+      },
+      "value": "",
+      "intent": "#Intent;S.action_inovel=cmd;S.methodId=Get3dState;S.explicit=format;end",
+      "subs": [
+        {
+          "priority": "1",
+          "name": "上下格式",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=Switch3D;S.params=format;S.state=3;end",
+          "value": "",
+          "subs": []
+        },
+        {
+          "priority": "1",
+          "name": "左右格式",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=Switch3D;S.params=format;S.state=2;end",
+          "value": "",
+          "subs": []
+        },
+        {
+          "priority": "1",
+          "name": "蓝光3D",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=Switch3D;S.params=format;S.state=1;end",
+          "value": "",
+          "subs": []
+        },
+        {
+          "priority": "1",
+          "name": "关闭3D",
+          "attrs": {
+            "iconType": "1",
+            "bgType": "1",
+            "checkable": "1",
+            "mulCheckable": "0",
+            "seekable": ""
+          },
+          "intent": "#Intent;S.action_inovel=cmd;S.methodId=Switch3D;S.params=format;S.state=0;end",
+          "value": "",
+          "subs": []
+        }
+      ]
+    },
+    {
+      "priority": "1",
+      "name": "系统设置",
+      "attrs": {
+        "iconType": "1",
+        "bgType": "1",
+        "checkable": "0",
+        "mulCheckable": "0",
+        "seekable": ""
+      },
+      "value": "",
+      "intent": "#Intent;S.action_inovel=toActivity;launchFlags=0x10000000;component=com.lzui.setting/.MainActivity;end",
+      "subs": []
+    }
+  ]
+}

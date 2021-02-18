@@ -1,0 +1,237 @@
+package com.lzui.plugin.bdreceiver;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+
+import com.alibaba.fastjson.JSON;
+import com.lzui.plugin.AppApplication;
+import com.lzui.plugin.biz.GetUpgradeBiz;
+import com.lzui.plugin.biz.GetUpgradeBiz.IGetUpgradeCallback;
+import com.lzui.plugin.model.MessageModel;
+import com.lzui.plugin.service.DownloadService;
+import com.lzui.plugin.util.DebugUtil;
+import com.lzui.plugin.util.MVDeviceConfig;
+import com.lzui.plugin.util.Util;
+import com.lzui.plugin.view.CommDialog;
+import com.lzui.plugin.view.CommDialog.IDialogCallBack;
+import com.platform.sdk.m2.bean.RomUpgrade;
+import com.platform.sdk.m2.response.rom.RomUpgradeResponse;
+import com.smart.data.DataFormat;
+import com.smart.util.Utils;
+
+import java.io.File;
+
+public class BootReceiver extends BroadcastReceiver {
+
+    public static GetUpgradeBiz mGetUpgradeBiz = null;
+
+    /** usb弹出框 */
+    private static CommDialog mUpgradeDialog = null;
+
+    private static IGetUpgradeCallback mGetUpgradeCallBack = new IGetUpgradeCallback() {
+
+        @Override
+        public void getUpgradeBack(RomUpgradeResponse response) {
+            if (response != null) {
+                DebugUtil.d("get success! ret code = " + response.getRetCode());
+                dealUpgradeBack(response.getRomUpgrade());
+            } else {
+                DebugUtil.e("get failed!");
+            }
+        }
+    };
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String action = intent.getAction();
+        DebugUtil.d("=receive bd: " + action);
+        if (action.equals("com.lz.test.romupgrade")) {
+            // 启动单词升级
+            startCheckUpgrade();
+        } else if (action.equals("com.lzui.launcher.adv.completed")) {
+            MVDeviceConfig.isLauncherAdvCompleted = true;
+            startCheckUpgrade();
+        } else if (action.equals(MessageModel.BD_SYSTEM_UPGRADE)) {
+            if (intent.hasExtra(MessageModel.EXTRA_TAG)) {
+                Util.startMainActivity(AppApplication.mContext,
+                    MessageModel.EXTRA_ZIP_PATH,
+                    intent.getStringExtra(MessageModel.EXTRA_TAG));
+            }
+        } else if (action.equals("android.intent.action.MEDIA_MOUNTED")) {
+            DebugUtil.d("path: " + intent.getData().getPath());
+            checkUsbUpdate(intent.getData().getPath());
+        } else if (action.equals("android.intent.action.MEDIA_UNMOUNTED")
+            || action.equals("android.intent.action.MEDIA_REMOVED")) {
+            if (intent != null && intent.getData() != null) {
+                String usbPath = intent.getData().getPath();
+                DebugUtil.d(" usb path = " + usbPath);
+                if (mUpgradeDialog != null && mUpgradeDialog.getZipPath().contains(usbPath)
+                    && mUpgradeDialog.isShowing()) {
+                    mUpgradeDialog.dismiss();
+                }
+            }
+        } else if (action.equals("com.lz.open.debug")) {
+            DebugUtil._NEED_LOG = true;
+        } else if (action.equals("com.lz.close.debug")) {
+            DebugUtil._NEED_LOG = false;
+        } else if (action.equals("android.net.conn.CONNECTIVITY_CHANGE")) {
+            if (Utils.isNetConnected(context)) {
+                DebugUtil.d("net state changed and has connected");
+                requestUpgradeRomAgain();
+            }
+        } else if (action.equals("android.net.pppoe.PPPOE_STATE_CHANGED")) {
+            int mPppoeState = intent.getIntExtra("pppoe_state", 3);
+            if (mPppoeState == 1) {
+                DebugUtil.d("pppoe has connected ,need reUpgrade");
+                requestUpgradeRomAgain();
+            }
+        }
+    }
+
+    /**
+     * 显示升级框
+     * @param path
+     */
+    private void showUpgradeDialog(String path) {
+        if (mUpgradeDialog == null) {
+            mUpgradeDialog = new CommDialog(AppApplication.mContext);
+            mUpgradeDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                }
+            });
+            mUpgradeDialog.setCallBack(new IDialogCallBack() {
+
+                @Override
+                public void leftClick(String path) {
+                    // 打开路径
+                    Util.startMainActivity(AppApplication.mContext, MessageModel.EXTRA_ZIP_PATH, path);
+                }
+
+                @Override
+                public void rightClick() {
+                }
+            });
+        }
+        mUpgradeDialog.setZipPath(path);
+        mUpgradeDialog.show();
+    }
+
+    /**
+     * 启动一次升级
+     */
+    private void startCheckUpgrade() {
+        DebugUtil.d("start check system upgrade");
+        if (mGetUpgradeBiz == null) {
+            mGetUpgradeBiz = new GetUpgradeBiz(mGetUpgradeCallBack);
+        }
+//        mGetUpgradeBiz.requestNeedUpgradeRom();//解决开机系统更新画面显示2次
+        mGetUpgradeBiz.netResumeRequestUpgradeRomAgain();
+    }
+
+    /**
+     * 网络恢复后再次骑牛
+     */
+    private void requestUpgradeRomAgain() {
+        if (MVDeviceConfig.isLauncherAdvCompleted) {
+            DebugUtil.d("start requestUpgradeRomAgain system upgrade");
+            if (mGetUpgradeBiz == null) {
+                mGetUpgradeBiz = new GetUpgradeBiz(mGetUpgradeCallBack);
+            }
+            mGetUpgradeBiz.netResumeRequestUpgradeRomAgain();
+        } else {
+            DebugUtil.d("isLauncherAdvCompleted = false, no need upgrade");
+        }
+    }
+
+    /**
+     * 检测u盘下面有没有rom升级文件
+     * rom升级包统一放在U盘的根目录下
+     * @param usbPath
+     */
+    private void checkUsbUpdate(String usbPath) {
+        if (!DataFormat.isEmpty(usbPath)) {
+            File usbFile = new File(usbPath);
+            DebugUtil.d("====   checkfile ==" + usbPath);
+            String zipPath = null;
+            File zipFile = null;
+            switch (MVDeviceConfig.CHIP_TYPE) {
+                case MVDeviceConfig.CHIP_TYPE_ZXW:
+                case MVDeviceConfig.CHIP_TYPE_HDMI:
+                case MVDeviceConfig.CHIP_TYPE_AMLOGIC:
+
+
+                    zipPath = usbPath + "/update.zip";
+                    zipFile = new File(zipPath);
+                    break;
+                case MVDeviceConfig.CHIP_TYPE_RK3229:
+                    // 3229 板卡开机启动发送挂载广播 ，路径为"/storage/emulated/0"
+                    if (usbPath.equalsIgnoreCase("/storage/emulated/0")) {
+                        DebugUtil.d("usbPath  is internal path" + usbPath);
+                        return;
+                    }
+                    zipPath = usbPath + "/update.zip";
+                    zipFile = new File(zipPath);
+                    break;
+                case MVDeviceConfig.CHIP_TYPE_RK3128:// 3128 做了系统层特殊处理，达到的效果是检测到U盘根目录的升级包，
+                    File[] files = usbFile.listFiles();
+                    if (files != null) {
+                        for (File childFile : files) {
+                            DebugUtil.d("childFile " + childFile.getAbsolutePath() + " childFile.isDirectory()  " + childFile.isDirectory());
+                            if (childFile.isDirectory()) {
+                                zipPath = childFile.getAbsolutePath() + "/update.zip";
+                                zipFile = new File(zipPath);
+                                DebugUtil.d(" zipFile.isFile() " + zipFile.isFile());
+                                if (zipFile.isFile()) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            if (zipFile != null && zipFile.isFile()) {
+                DebugUtil.d("check has update.zip from : " + zipPath);
+                // 弹框
+                showUpgradeDialog(zipPath);
+            }
+        }
+    }
+
+    /**
+     * 处理升级返回信息
+     * @param romUpgrade
+     */
+    private static void dealUpgradeBack(RomUpgrade romUpgrade) {
+        //        romUpgrade.setDownurl("http://hot.m.shouji.360tpcdn.com/170228/f7531b825dae5ebe2be09c5ccd3b8b4e/com.qihoo.appstore_300070026.apk");
+        // 兼容升级，测速用
+        //        romUpgrade.setMandatoryupdate(0);
+        if (romUpgrade != null && !DataFormat.isEmpty(romUpgrade.getDownurl())) {
+            DebugUtil.d("has upgrade, " + romUpgrade.getMandatoryupdate());
+            if (romUpgrade.getMandatoryupdate() == 1) {
+                // 强制升级，不需要升级界面
+                final String url = romUpgrade.getDownurl();
+                DebugUtil.d("url：" + url);
+                DebugUtil.d("romUpgrade.getVsn：" + romUpgrade.getVsn());
+                Intent downloadService = new Intent();
+                downloadService.setClass(AppApplication.mContext, DownloadService.class);
+                downloadService.putExtra("ota_url", romUpgrade.getDownurl());
+                downloadService.putExtra("is_path", false);
+                downloadService.putExtra("background_update", true);
+                AppApplication.mContext.startService(downloadService);
+            } else {
+                Util.startMainActivity(AppApplication.mContext,
+                    MessageModel.EXTRA_UPGRADE_INFO,
+                    JSON.toJSONString(romUpgrade));
+            }
+        } else {
+            DebugUtil.d("no upgrade, romUpgrade = " + romUpgrade);
+        }
+    }
+}

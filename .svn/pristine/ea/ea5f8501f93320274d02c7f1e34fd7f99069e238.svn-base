@@ -1,0 +1,61 @@
+{
+  "priority": "1",
+  "name": "3D设置",
+  "iconType": "1",
+  "bgType": "1",
+  "checkable": "0",
+  "mulCheckable": "0",
+  "value": "",
+  "seekable": "",
+  "intent": "#Intent;action=cmd;S.methodId=Get3dState;end",
+  "subs": [
+    {
+      "priority": "1",
+      "name": "左右格式",
+      "iconType": "1",
+      "bgType": "1",
+      "checkable": "1",
+      "mulCheckable": "0",
+      "intent": "#Intent;action=cmd;S.methodId=Switch3D;S.params=format;S.state=2;end",
+      "value": "",
+      "seekable": "",
+      "subs": []
+    },
+    {
+      "priority": "1",
+      "name": "上下格式",
+      "iconType": "1",
+      "bgType": "1",
+      "checkable": "1",
+      "mulCheckable": "0",
+      "intent": "#Intent;action=cmd;S.methodId=Switch3D;S.params=format;S.state=3;end",
+      "value": "",
+      "seekable": "",
+      "subs": []
+    },
+    {
+      "priority": "1",
+      "name": "蓝光3D",
+      "iconType": "1",
+      "bgType": "1",
+      "checkable": "1",
+      "mulCheckable": "0",
+      "intent": "#Intent;action=cmd;S.methodId=Switch3D;S.params=format;S.state=1;end",
+      "value": "",
+      "seekable": "",
+      "subs": []
+    },
+    {
+      "priority": "1",
+      "name": "关闭3D",
+      "iconType": "1",
+      "bgType": "1",
+      "checkable": "1",
+      "mulCheckable": "0",
+      "intent": "#Intent;action=cmd;S.methodId=Switch3D;S.params=format;S.state=0;end",
+      "value": "",
+      "seekable": "",
+      "subs": []
+    }
+    ]
+}

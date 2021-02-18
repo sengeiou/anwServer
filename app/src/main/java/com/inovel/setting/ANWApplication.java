@@ -1,0 +1,48 @@
+package com.inovel.setting;
+
+import android.app.Application;
+import android.content.Context;
+
+import com.droidlogic.app.SystemControlManager;
+import com.inovel.setting.util.SharedPreferenceUtil;
+import com.inovel.setting.util.WorkThread;
+import com.lunzn.tool.autofit.GetScreenSize;
+import com.lunzn.tool.crash.CrashHandler;
+import com.lunzn.tool.log.LogUtil;
+
+/**
+ * Desc: 初始化界面工具类
+ * <p>
+ * Author: xiezhitao
+ * PackageName: com.lz.anwservice
+ * ProjectName: anwServer
+ * Date: 2018/12/14 10:21
+ */
+public class ANWApplication extends Application {
+    private static final String TAG = ANWApplication.class.getSimpleName();
+    private static Context sContext;
+    private static SystemControlManager mSystemControlManager;
+
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        LogUtil.init(true);
+        LogUtil.i(TAG, "onCreate application");
+        LogUtil.setSaveLogPath(this, "anw.log", true);
+        SharedPreferenceUtil.init(this,"anwsp");
+        GetScreenSize.initData(this);
+        CrashHandler.getInstance().init(this);
+        sContext = getApplicationContext();
+        WorkThread.getInstance();
+        mSystemControlManager = new SystemControlManager(this);
+    }
+
+    public static Context getApplication() {
+        return sContext;
+    }
+
+    public static SystemControlManager getSystemControlManager() {
+        return mSystemControlManager;
+    }
+}

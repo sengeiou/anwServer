@@ -1,0 +1,119 @@
+package com.inovel.setting.view.holder.helper;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Message;
+import android.text.TextUtils;
+
+import com.inovel.setting.Constants;
+import com.inovel.setting.service.ANWKeyService;
+import com.inovel.setting.view.windowview.CommMenuView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.ai.AiItem;
+import com.lz.aiui.window.GlobalWindow;
+
+import java.net.URISyntaxException;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.holder.helper
+ * 工程名:Anovel
+ * 时间:2018/12/28 10:40
+ * 说明:
+ */
+public class ViewHolderOperateImpl implements IViewHolderOperate<AiItem> {
+
+
+    private static final String TAG = "ViewHolderOperateImpl";
+
+    private Context mContext;
+
+    public ViewHolderOperateImpl(Context context) {
+        mContext = context;
+    }
+
+    @Override
+    public void reset(@NonNull RecyclerView.ViewHolder holder) {
+
+    }
+
+    @Override
+    public void showPre() {
+        sendMessage(CommMenuView.EVENT_PRE, null);
+    }
+
+    @Override
+    public void showNext(AiItem item) {
+        boolean hasNext = item.getSubs() != null && item.getSubs().size() > 0;
+        LogUtil.d(TAG, hasNext ? "showNext " : "showNext No subs " + item.getName());
+        if (hasNext) {
+            sendMessage(CommMenuView.EVENT_NEXT, item);
+        }
+    }
+
+    @Override
+    public void notifyFocusChanged(int position) {
+        sendMessage(CommMenuView.EVENT_FOCUS_CHANGED, position);
+    }
+
+    @Override
+    public void notifyDataSet() {
+        sendMessage(CommMenuView.EVENT_VALUE_SET, null);
+    }
+
+    @Override
+    public boolean dispatchAction(@NonNull String intent) {
+        LogUtil.d(TAG, "intent = " + intent);
+
+        try {
+            Intent it = Intent.parseUri(intent, Intent.URI_ALLOW_UNSAFE);
+            String action = it.getAction();
+            if (TextUtils.isEmpty(action)) {
+                LogUtil.e("Does not support the intent for no action ");
+                return false;
+            } else {
+                try {
+                    assert action != null;
+                    switch (action) {
+                        case Constants.ACTION_CMD:
+                            //TODO
+                            ANWKeyService.sendCMD(intent);
+                            break;
+                        case Constants.ACTION_HDMI_CMD:
+                            //TODO
+                            ANWKeyService.sendCMD(intent);
+                            break;
+                        case Constants.ACTION_TO_ACTIVITY:
+                            mContext.startActivity(it);
+                            break;
+                        case Constants.ACTION_TO_SERVICE:
+                            mContext.startService(it);
+                            break;
+
+                        default:
+                            LogUtil.e(TAG, "does not support intent...");
+                            return false;
+                    }
+                    return true;
+                } catch (Exception e) {
+                    LogUtil.e(TAG, e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        } catch (URISyntaxException e) {
+            LogUtil.e(TAG, e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private <T> void sendMessage(int what, T item) {
+        Message message = new Message();
+        message.what = what;
+        message.obj = item;
+        GlobalWindow.getInstance().updateViews(message);
+    }
+}

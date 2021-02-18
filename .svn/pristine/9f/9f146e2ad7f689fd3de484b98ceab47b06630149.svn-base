@@ -1,0 +1,108 @@
+package com.inovel.setting.view.windowdialog;
+
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.widget.LinearLayout;
+
+import com.inovel.inovelsocketlib.SocketManager;
+import com.inovel.setting.R;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.lunzn.tool.autofit.AutoButton;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+/**
+ * Desc: Power按键弹窗
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.view.windowdialog
+ * ProjectName: anwServer
+ * Date: 2018/12/26 9:26
+ */
+public class PowerKeyDialog extends NavigationWindow implements View.OnClickListener {
+
+
+    public PowerKeyDialog(Context context) {
+        super(context);
+    }
+
+    @Override
+    public WindowManager.LayoutParams getLayoutParam() {
+        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+        layoutParams.flags = WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+        layoutParams.width = WindowManager.LayoutParams.MATCH_PARENT;
+        layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT;
+        layoutParams.format = PixelFormat.TRANSPARENT;
+        layoutParams.type = WindowManager.LayoutParams.TYPE_PHONE;
+        layoutParams.gravity = Gravity.CENTER;
+        return layoutParams;
+    }
+
+
+    @Override
+    protected void createRootView(Context mContext, Object data) {
+        mRootView = (DialogContentLayout) mInflater.inflate(R.layout.layout_power_key, null, false);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        mRootView.setLayoutParams(layoutParams);
+        ViewHolder viewHolder = new ViewHolder(mRootView);
+        viewHolder.btnRestart.setOnClickListener(this);
+        viewHolder.btnShotDown.setOnClickListener(this);
+        viewHolder.btnScreenOff.setOnClickListener(this);
+        viewHolder.btnShotDown.requestFocusFromTouch();
+    }
+
+    @Override
+    protected Animation getAnimation(boolean isShow) {
+        return null;
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_restart:
+                PowerKeyUtils.reboot(mContext);
+                break;
+            case R.id.btn_shot_down:
+                PowerKeyUtils.shotDown(mContext);
+                break;
+            case R.id.btn_screen_off:
+                PowerKeyUtils.screenOffOrOn();
+//                if (mConnect) {
+                SocketManager.instance()
+                        .createSocket()
+                        .setMethodId("SetScreenState")
+                        .setParameter("state", 0)//0是关，1是开
+                        .send();
+//                } else {
+//                    LogUtil.d(TAG, "Connect Failed ... ");
+//                }
+                break;
+        }
+    }
+
+    static class ViewHolder {
+        @BindView(R.id.btn_restart) AutoButton btnRestart;
+        @BindView(R.id.btn_shot_down) AutoButton btnShotDown;
+        @BindView(R.id.btn_screen_off) AutoButton btnScreenOff;
+
+        ViewHolder(View view) {ButterKnife.bind(this, view);}
+    }
+
+
+    /**
+     * 隐藏控制栏
+     */
+    private void dismiss() {
+        if (mRootView != null) {
+            mWindow.removeView(mRootView);
+            this.isShow = false;
+        }
+    }
+
+}

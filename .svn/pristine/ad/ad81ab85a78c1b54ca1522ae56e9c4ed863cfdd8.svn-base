@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.inovel.setting">
+    <!--android:sharedUserId="android.uid.system"-->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.SHUTDOWN" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.DEVICE_POWER" />
+
+    <application
+        android:name=".ANWApplication"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/TranslateTheme"
+        tools:ignore="GoogleAppIndexingWarning">
+
+
+        <service
+            android:name="com.inovel.setting.service.ANWKeyService"
+            android:enabled="true"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="com.lzpd.handle.keyevent" />
+                <action android:name="com.lzpd.handle.xiri" />
+            </intent-filter>
+
+        </service>
+
+        <service android:name="com.inovel.setting.service.XiriCommandService">
+            <intent-filter>
+                <action android:name="com.iflytek.xiri2.app.NOTIFY" />
+                <action android:name="com.iflytek.xiri2.app.FILTER" />
+                <action android:name="tv.yuyin.self" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>

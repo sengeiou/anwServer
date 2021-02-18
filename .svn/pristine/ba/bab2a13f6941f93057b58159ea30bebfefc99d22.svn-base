@@ -1,0 +1,382 @@
+package com.inovel.setting.view.windowview;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.util.AttributeSet;
+import android.util.SparseArray;
+import android.util.SparseIntArray;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LayoutAnimationController;
+import android.widget.TextView;
+
+import com.inovel.setting.R;
+import com.inovel.setting.service.ANWKeyService;
+import com.inovel.setting.util.AdapterFactoryImpl;
+import com.inovel.setting.util.SourceUtils;
+import com.lunzn.tool.autofit.AutoImageView;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.adapter.CommonRecyclerAdapter;
+import com.lz.aiui.ai.AiHelper;
+import com.lz.aiui.ai.AiItem;
+import com.lz.aiui.interfaces.OnEventTransfer;
+
+import org.json.JSONObject;
+
+import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+/**
+ * 作者:zhouqiang
+ * 包名:com.inovel.setting.view.windowview
+ * 工程名:Anovel
+ * 时间:2018/12/25 11:23
+ * 说明: 通用View
+ */
+public class CommMenuView extends ConstraintLayout implements OnEventTransfer<Message> {
+
+    private static final String TAG = "CommMenuView";
+    /** 事件ID */
+    public static final int EVENT_NEXT = KeyEvent.KEYCODE_DPAD_RIGHT;
+    public static final int EVENT_PRE = KeyEvent.KEYCODE_DPAD_LEFT;
+    public static final int EVENT_FOCUS_CHANGED = KeyEvent.KEYCODE_CLEAR;
+    public static final int EVENT_VALUE_SET = KeyEvent.KEYCODE_DPAD_CENTER;
+    public static final int CANCEL_DIALOG = 0X100;
+    public static final int EVENT_REFRESH = 0X101;
+
+    /** 标题View */
+    private TextView mTitleView;
+
+    /** 返回箭头View */
+    private AutoImageView mIvBackImg;
+
+    /** 菜单项View */
+    private RecyclerView mRecyclerView;
+
+    /** 辅助类 */
+    private CommMenuViewHelper mMenuViewHelper;
+
+    /** 布局管理器 */
+    private GridLayoutManager mLinearLayoutManager;
+
+    /** 适配器 */
+    private CommonRecyclerAdapter mAdapter;
+
+    /** 原始数据 */
+    private AiItem mAll;
+
+    /** 数据历史 栈队列 */
+    private SparseArray<AiItem> mRecentStack = new SparseArray<>();
+
+    /** 缓存每一页的焦点位置 */
+    private SparseIntArray mRecentPosition = new SparseIntArray();
+
+    /** 布局动画 */
+    private LayoutAnimationController mController;
+
+    /** 当前页 */
+    private int mCurrentPage;
+
+    /** 上下文 */
+    private Context mContext;
+
+    /** 单例 */
+    private static CommMenuView mCommMenuView;
+
+    /** 从机器中查询到的数字值 */
+    private JSONObject mJSONObject;
+
+
+    private Handler mHandler = new Handler(msg -> {
+        LogUtil.d(TAG, "msg.what = " + msg.what);
+
+        switch (msg.what) {
+            case EVENT_NEXT:
+                mCurrentPage += 1;
+                showNext((AiItem) msg.obj);
+                break;
+            case EVENT_PRE:
+                if (mRecentStack.size() > 1) {
+                    showPre();
+                } else {
+                    LogUtil.d(TAG, "No pre page. All:  " + mAll);
+                }
+                break;
+
+            case EVENT_FOCUS_CHANGED:
+                notifyFocusChanged((int) msg.obj);
+                break;
+            case EVENT_VALUE_SET:
+                notifyDataSet();
+                break;
+            case EVENT_REFRESH:
+                mJSONObject = (JSONObject) msg.obj;
+                break;
+            case CANCEL_DIALOG:
+//                mMenuViewHelper.hide();
+                break;
+            default:
+                return false;
+        }
+        return true;
+    });
+
+    public CommMenuView(Context context) {
+        this(context, null);
+    }
+
+    public CommMenuView(Context context, AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
+
+    public CommMenuView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+
+        init(context);
+    }
+
+    public static CommMenuView getInstance(Context context) {
+        if (mCommMenuView == null) {
+            synchronized (CommMenuView.class) {
+                if (mCommMenuView == null) {
+                    mCommMenuView = new CommMenuView(context);
+                }
+            }
+        }
+        return mCommMenuView;
+    }
+
+
+    /**
+     * 数据发生变化，影响当前列表状态
+     */
+    private void notifyDataSet() {
+        AiItem lastPageItem = mRecentStack.get(mCurrentPage);
+        @NonNull List<AiItem> list = lastPageItem.getSubs();
+        AiItem item;
+        int i = 0;
+        for (; i < list.size(); i++) {
+            item = list.get(i);
+            if (AiItem.ABLE.equals(item.getValue())) {//寻找选中项，并设置选中状态
+                item.setValue(AiItem.ABLE_NO);
+                break;
+            }
+        }
+        int changedPosition = mRecentPosition.get(mCurrentPage);
+        list.get(changedPosition).setValue(AiItem.ABLE);
+        mAdapter.notifyItemChanged(i);
+    }
+
+    /**
+     * 焦点发生变化
+     *
+     * @param obj 焦点位置
+     */
+    private void notifyFocusChanged(int obj) {
+        LogUtil.d(TAG, " notifyFocusChanged " + obj);
+        mRecentPosition.put(mCurrentPage, obj);
+    }
+
+    /**
+     * 下一页
+     *
+     * @param obj 下一页数据
+     */
+    private void showNext(AiItem obj) {
+        mRecentStack.put(mRecentStack.size(), obj);
+        updatePage(obj);
+    }
+
+    private void updatePage(AiItem obj) {
+//        LogUtil.d(TAG, "updatePage obj = " + obj);
+        mTitleView.setText(obj.getName());
+
+//        try {
+//            if (mJSONObject != null) {
+//                LogUtil.d(TAG, " mJSONObject " + mJSONObject.toString());
+//                if (obj.getName().equalsIgnoreCase("图像模式") && mJSONObject.has("imageMode")) {
+//                    int imageMode = mJSONObject.getInt("imageMode");
+//                    for (int i = 0; i < obj.getSubs().size(); i++) {
+//                        if (imageMode == i){
+//                            obj.getSubs().get(i).setValue(AiItem.ABLE);
+//                        }
+//                    }
+//
+//                }
+//            }
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        }
+
+
+        List<AiItem> list = mAdapter.getList();
+        list.clear();
+        list.addAll(obj.getSubs());
+        notifyDataSetChangedWithAnim();
+
+        //设置title返回箭头显示状态
+        mIvBackImg.setVisibility(hasPre() ? VISIBLE : INVISIBLE);
+    }
+
+    /**
+     * 上一页
+     */
+    private void showPre() {
+        //先清除当前页的位置缓存
+        mRecentPosition.delete(mCurrentPage);
+        //再显示上一页
+        mCurrentPage -= 1;
+        int key = mRecentStack.size() - 1;
+        mRecentStack.delete(key);
+        AiItem item = mRecentStack.get(mRecentStack.size() - 1);
+        LogUtil.d(TAG, "Pre page.   " + mRecentStack.size());
+        updatePage(item);
+    }
+
+    /**
+     * 是否可返回
+     */
+    private boolean hasPre() {
+        return mRecentStack.size() > 1;
+    }
+
+
+    /**
+     * 初始化
+     *
+     * @param context 上下文
+     */
+    private void init(Context context) {
+        LayoutInflater.from(context).inflate(R.layout.layout_comm_set, this, true);
+        mTitleView = findViewById(R.id.atv_title);
+        mIvBackImg = findViewById(R.id.iv_back_img);
+        mRecyclerView = findViewById(R.id.rv_recycler);
+
+        mMenuViewHelper = new CommMenuViewHelper(this);
+        mLinearLayoutManager = new GridLayoutManager(context, 1);
+        mLinearLayoutManager.setOrientation(RecyclerView.VERTICAL);
+        mRecyclerView.setLayoutManager(mLinearLayoutManager);
+        mController =
+                AnimationUtils.loadLayoutAnimation(getContext(), R.anim.anim_layout_slide_from_right);
+        mRecyclerView.setLayoutAnimation(mController);
+        mRecyclerView.setLayoutAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                LogUtil.d(TAG, "   onAnimationStart   ");
+                //设置焦点View
+                requestRecyclerFocusItem(mRecentPosition.get(mCurrentPage));
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                LogUtil.d(TAG, "   onAnimationEnd   ");
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+
+        //加载数据
+        AiHelper<AiItem> aiHelper = new AiHelper<AiItem>() {//抽象类空实现
+        };
+        if (ANWKeyService.mCurrentType == 1) {
+
+            mAll = aiHelper.flatten(SourceUtils.getFromAssets(context, "anovel_signal.json"));
+        } else if (ANWKeyService.mCurrentType == 2) {
+            mAll = aiHelper.flatten(SourceUtils.getFromAssets(context, "anovel_3D.json"));
+        } else {
+            mAll = aiHelper.flatten(SourceUtils.getFromAssets(context, "anovel.json"));
+        }
+        mTitleView.setText(mAll.getName());
+        mRecentStack.put(mRecentStack.size(), mAll);
+
+        //绑定数据
+        mAdapter = new CommonRecyclerAdapter(new AdapterFactoryImpl(context));
+        mRecyclerView.setAdapter(mAdapter);
+        mAdapter.getList().addAll(mAll.getSubs());
+        notifyDataSetChangedWithAnim();
+
+        //默认第一个位置
+        mRecentPosition.put(mCurrentPage, 0);
+    }
+
+    /**
+     * 请求recycler item 焦点
+     *
+     * @param position 焦点位置
+     */
+    private void requestRecyclerFocusItem(int position) {
+        RecyclerView.ViewHolder holder = mRecyclerView.findViewHolderForLayoutPosition(position);
+        if (holder != null) {
+            holder.itemView.requestFocus();
+        }
+    }
+
+
+    /**
+     * 刷新数据带动画
+     */
+    private void notifyDataSetChangedWithAnim() {
+        mAdapter.notifyDataSetChanged();
+        mRecyclerView.scheduleLayoutAnimation();
+    }
+
+
+    /* Override*/
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+
+        sendDismissHandler();
+
+        //优先处理返回键事件
+        if (KeyEvent.ACTION_DOWN == event.getAction() && KeyEvent.KEYCODE_BACK == event.getKeyCode() && mRecentStack.size() > 1) {
+            showPre();
+            return true;
+        } else {
+            //分发事件
+            if (mMenuViewHelper.dispatchKeyEvent(event)) {
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
+    }
+
+    @Override
+    public boolean onEvent(Message msg) {
+        if (mHandler.obtainMessage(msg.what, msg.obj) != null) {
+            Message _msg = new Message();
+            _msg.what = msg.what;
+            _msg.obj = msg.obj;
+            msg = _msg;
+        }
+        mHandler.sendMessage(msg);
+
+        return true;
+    }
+
+    /**
+     * 3s 隐藏侧边栏
+     */
+    public void sendDismissHandler() {
+        if (mHandler.hasMessages(CANCEL_DIALOG)) {
+            mHandler.removeMessages(CANCEL_DIALOG);
+        }
+        mHandler.sendEmptyMessageDelayed(CANCEL_DIALOG, 3000);
+    }
+
+
+
+   /* public void setCurrentType(int currentType) {
+        mCurrentType = currentType;
+    }*/
+}

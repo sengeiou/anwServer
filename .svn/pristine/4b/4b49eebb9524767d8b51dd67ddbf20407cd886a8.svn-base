@@ -1,0 +1,158 @@
+package com.inovel.setting.util;
+
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
+
+/**
+ * 工作的处理类,所有需要异步处理的耗时操作都在这里实现
+ *
+ * @author hzy
+ */
+public class WorkThread {
+
+    private final static String TAG = WorkThread.class.getSimpleName();
+
+    private static WorkThread instance = null;
+    private WorkHandler hWorkHandler = null;
+
+    private WorkThread() {
+        // 任务主线程建立
+        HandlerThread hHandlerThread = new HandlerThread(String.format("showcome_workcenter_%X", System.currentTimeMillis()));
+        hHandlerThread.start();
+        hWorkHandler = new WorkHandler(hHandlerThread.getLooper());
+    }
+
+    /**
+     * 获取工作处理类对象
+     *
+     * @return
+     */
+    public static WorkThread getInstance() {
+        if (instance == null) {
+            instance = new WorkThread();
+        }
+
+        return instance;
+    }
+
+    /**
+     * 任务主线程添加一项工作
+     *
+     * @param work
+     */
+    public boolean mainThread_addWork(Runnable work) {
+        if (work == null) {
+            return false;
+        }
+
+        return hWorkHandler.post(work);
+    }
+
+    /**
+     * 任务主线程添加一项工作,在指定时间后再执行
+     *
+     * @param work
+     * @param delayMillis
+     * @return
+     */
+    public boolean mainThread_addWork(Runnable work, int delayMillis) {
+        if (work == null) {
+            return false;
+        }
+
+        return hWorkHandler.postDelayed(work, delayMillis);
+    }
+
+    /**
+     * 任务主线程取消一项工作
+     *
+     * @param work
+     * @return
+     */
+    public void mainThread_cancelWork(Runnable work) {
+        if (work == null) {
+            return;
+        }
+
+        hWorkHandler.removeCallbacks(work);
+    }
+
+    /**
+     * 任务主线程取消所有队列中的工作
+     */
+    public void mainThread_cancelAllWorks() {
+        hWorkHandler.removeCallbacksAndMessages(null);
+    }
+
+    /**
+     * 启动其他工作线程进行任务处理
+     *
+     * @param work
+     * @return
+     */
+    public boolean otherThread_scheduleWork(Runnable work) {
+        if (work == null) {
+            return false;
+        }
+
+        new Thread(work).start();
+
+        return true;
+    }
+
+    /**
+     * 在指定时间后进行任务处理
+     *
+     * @param work
+     * @param delay 毫秒
+     * @return
+     */
+    public boolean otherThread_scheduleWork(final Runnable work, int delay) {
+        if (work == null) {
+            return false;
+        }
+
+        if (delay <= 0) {
+            return otherThread_scheduleWork(work);
+        }
+
+        Timer t = new Timer();
+        t.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                otherThread_scheduleWork(work);
+            }
+        }, delay);
+
+        return true;
+    }
+
+    // 调用结束后的回调
+    public interface WorkFinishCallBack {
+        /**
+         * 工作完成的回调
+         *
+         * @param bSuccess 操作是否成功
+         * @param result   操作结果
+         */
+        public void onFinished(boolean bSuccess, Object result);
+    }
+
+    private static class WorkHandler extends Handler {
+
+        public WorkHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+        }
+    }
+}

@@ -1,0 +1,96 @@
+package com.inovel.setting.service;
+
+import android.content.Intent;
+
+import com.iflytek.xiri.AppService;
+import com.iflytek.xiri.Feedback;
+import com.lunzn.tool.log.LogUtil;
+
+/**
+ * Desc: TODO
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.service
+ * ProjectName: anwServer
+ * Date: 2018/12/14 18:29
+ */
+public class XiriCommandService extends AppService {
+
+
+    private static final String TAG = XiriCommandService.class.getSimpleName();
+
+    private Feedback mFeedback;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initListen();
+        mFeedback = new Feedback(XiriCommandService.this);
+    }
+
+    @Override
+    protected void onInit() {
+
+    }
+
+
+    /**
+     * 初始化 语音监听
+     */
+    private void initListen() {
+        //应用内全局
+        setLocalAppListener(localAppListener);
+        // 应用
+        setAppListener(myAppListener);
+    }
+
+    /**
+     * 应用内全局语音监听
+     */
+    ILocalAppListener localAppListener = new ILocalAppListener() {
+
+        @Override
+        public void onExecute(Intent arg0) {
+            LogUtil.i(TAG, "localAppListener onExecute() ");
+            mFeedback.begin(arg0);
+            String key = arg0.getStringExtra("_command");
+            if ("左右3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已打开左右3D", Feedback.SILENCE);
+            }else if ("上下3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已打开上下3D", Feedback.SILENCE);
+            }else if ("关闭3D".equalsIgnoreCase(key)) {
+                mFeedback.feedback("已关闭3D", Feedback.SILENCE);
+            }
+        }
+    };
+
+
+    /**
+     * 全程语音监听
+     */
+    IAppListener myAppListener = new IAppListener() {
+
+
+        @Override
+        public void onExecute(Intent intent) {
+            LogUtil.d(TAG, "appservice:" + intent.toURI());
+            mFeedback.begin(intent);
+            if (intent.hasExtra("_command")) {
+                String command = intent.getStringExtra("_command");
+                LogUtil.i(TAG, "=-==========onExecute===================================command:" + command);
+                if ("key_test".equals(command)) {
+                } else if ("recipe".equals(command)) {
+                    LogUtil.i(TAG, "onExecute  recipe");
+                } else {
+                }
+            }
+            mFeedback.feedback("onExecute", Feedback.DIALOG);
+        }
+
+        @Override
+        public void onTextFilter(Intent intent) {
+            LogUtil.d(TAG, "onTextFilter");
+        }
+    };
+
+}

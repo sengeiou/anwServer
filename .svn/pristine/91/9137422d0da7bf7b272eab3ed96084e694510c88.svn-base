@@ -1,0 +1,73 @@
+package com.inovel.setting.bean;
+
+import java.util.List;
+
+/**
+ * Desc: TODO
+ * <p>
+ * Author: xiezhitao
+ * PackageName: com.inovel.setting.bean
+ * ProjectName: anwServer
+ * Date: 2018/12/26 9:29
+ */
+public class DialogBean {
+
+    private List<DialogItemBean> data;
+
+    private boolean hasNext;
+
+    private boolean isCanBack;
+
+    private String name;
+
+    private int step;
+
+    public DialogBean(){};
+
+    public DialogBean(List<DialogItemBean> data, boolean hasNext, boolean isCanBack, String name) {
+        this.data = data;
+        this.hasNext = hasNext;
+        this.isCanBack = isCanBack;
+        this.name = name;
+    }
+
+    public boolean isHasNext() {
+        return hasNext;
+    }
+
+    public void setHasNext(boolean hasNext) {
+        this.hasNext = hasNext;
+    }
+
+    public List<DialogItemBean> getData() {
+        return data;
+    }
+
+    public void setData(List<DialogItemBean> data) {
+        this.data = data;
+    }
+
+    public boolean isCanBack() {
+        return isCanBack;
+    }
+
+    public void setCanBack(boolean canBack) {
+        isCanBack = canBack;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getStep() {
+        return step;
+    }
+
+    public void setStep(int step) {
+        this.step = step;
+    }
+}

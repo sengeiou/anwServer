@@ -1,0 +1,156 @@
+package com.inovel.setting.view.windowdialog;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.util.AttributeSet;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+
+import com.inovel.setting.R;
+import com.inovel.setting.util.PowerKeyUtils;
+import com.lunzn.tool.autofit.AutoFrameLayout;
+import com.lunzn.tool.log.LogUtil;
+import com.lz.aiui.window.GlobalWindow;
+
+/**
+ * Desc: 点击Power键的View
+ * <p>
+ * Author: zhoulai
+ * PackageName: com.inovel.setting.view.windowdialog
+ * ProjectName: anwServer
+ * Date: 2018/12/18 10:15
+ */
+public class DialogContentLayout extends AutoFrameLayout implements View.OnClickListener {
+
+    private static final String TAG = DialogContentLayout.class.getSimpleName();
+
+    private static final int CANCEL_DIALOG = 0X100;
+    private static final int DISSMISS_TIME = 3000;
+
+    public static final int RESTART = 0;
+    public static final int POWER_off = 1;
+    public static final int SCREEN_OFF = 2;
+    private View mBtnPowerOff;
+    private View mBtnRestart;
+    private View mBtnScreenOff;
+
+    @SuppressWarnings("all")
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            // 隐藏页面
+            GlobalWindow.getInstance()
+                    .with(getContext().getApplicationContext())
+                    .hideByTag(PowerKeyUtils.POWER_VIEW);
+        }
+    };
+
+
+    public DialogContentLayout(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+        init();
+    }
+
+
+    public DialogContentLayout(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public DialogContentLayout(Context context) {
+        super(context);
+        init();
+    }
+
+    /**
+     * 初始化布局
+     */
+    private void init() {
+        LayoutInflater.from(getContext()).inflate(R.layout.layout_power_key, this, true);
+        mBtnPowerOff = findViewById(R.id.btn_shot_down);
+        mBtnRestart = findViewById(R.id.btn_restart);
+        mBtnScreenOff = findViewById(R.id.btn_screen_off);
+        mBtnScreenOff.setOnClickListener(this);
+        mBtnRestart.setOnClickListener(this);
+        mBtnPowerOff.setOnClickListener(this);
+        mBtnPowerOff.requestFocusFromTouch();
+        sendDismissHandler(DISSMISS_TIME);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent keyEvent) {
+        sendDismissHandler(DISSMISS_TIME);
+        if (null != mListener) {
+            mListener.onKeyEvent(keyEvent);
+        }
+        if (keyEvent.getAction() == KeyEvent.ACTION_UP) {
+            switch (keyEvent.getKeyCode()) {
+                case KeyEvent.KEYCODE_BACK:
+//                case KeyEvent.KEYCODE_MENU:
+                    // 隐藏页面
+                    sendDismissHandler(0);
+                    break;
+            }
+        }
+        return super.dispatchKeyEvent(keyEvent);
+    }
+
+    private OnKeyEventListener mListener;
+
+    public void setOnKeyEventListener(OnKeyEventListener listener) {
+        mListener = listener;
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_screen_off:
+                LogUtil.i(TAG, "screen_off");
+                PowerKeyUtils.newInstance().screenOff();
+                break;
+            case R.id.btn_restart:
+                LogUtil.i(TAG, "restart");
+                PowerKeyUtils.reboot(getContext());
+                break;
+            case R.id.btn_shot_down:
+                LogUtil.i(TAG, "shot_down");
+                PowerKeyUtils.shotDown(getContext());
+                break;
+        }
+        sendDismissHandler(0);
+    }
+
+    public void setSelectItem(int focusItem) {
+        switch (focusItem) {
+            case RESTART:
+                mBtnRestart.requestFocusFromTouch();
+                break;
+            case POWER_off:
+                mBtnPowerOff.requestFocusFromTouch();
+                break;
+            case SCREEN_OFF:
+                mBtnScreenOff.requestFocusFromTouch();
+                break;
+        }
+    }
+
+
+    interface OnKeyEventListener {
+        void onKeyEvent(KeyEvent keyEvent);
+    }
+
+    /**
+     * 隐藏
+     */
+    private void sendDismissHandler(int delay) {
+        if (mHandler.hasMessages(CANCEL_DIALOG)) {
+            mHandler.removeMessages(CANCEL_DIALOG);
+        }
+        mHandler.sendEmptyMessageDelayed(CANCEL_DIALOG, delay);
+    }
+
+
+}
